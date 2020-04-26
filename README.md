@@ -1,2 +1,2 @@
 # django-sharding
-Simple horizontal scaling model for django
+Simple horizontal scaling utilities for django frame work
