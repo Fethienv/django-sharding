@@ -11,8 +11,7 @@ DATABASE_MAX_ROWS = 100
 
 DATABASE_ROUTERS = ['sharding.router.ShardingRouter', ]
 
-# must be the same user database key in DATABASES
-USER_INIT_DATABASE = 'user_1'
+USER_INIT_DATABASE = 'user_1' # must be the same user database key in DATABASES
 
 SHARDING_USER_MODEL = True
 
