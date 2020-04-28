@@ -27,7 +27,7 @@ Open admin site go to Databases and add all your datatbases
 
 ### Step 2:
 
-1. To sharding model, you must inihrite ShardedModel, it will automaticly change the id by new id base on uuid3 and uuid4
+1. To sharding model, you must inherit ShardedModel, it will automaticly change the id by new id base on uuid3 and uuid4
 2. To use ForeignKey field you should import it from sharding.fields
 
 Exemple:
@@ -63,7 +63,7 @@ class  Product(ShardedModel):
 ```
 
 ### Step 3:
-1. To sharding users, you must inihrite ShardedUser, it will automaticly change the id by new id base on uuid3 and uuid4, then add AUTH_USER_MODEL = 'accounts.User' to settings.py
+1. To sharding users, you must inherit ShardedUser, it will automaticly change the id by new id base on uuid3 and uuid4, then add AUTH_USER_MODEL = 'accounts.User' to settings.py
 
 Exemple:
 ```
