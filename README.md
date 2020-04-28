@@ -22,13 +22,13 @@ FIXTURE_DIRS = ['sharding.fixtures',]
 ### Step 1: 
 Open admin site go to Databases and add all your datatbases 
 Note: 
-1- model name field should be same as model
-2- model name + _ + number field should be same as database key in settings.py
+1. model name field should be same as model
+2. model name + _ + number field should be same as database key in settings.py
 
 ### Step 2:
 
-1- To sharding model, you must inihrite ShardedModel, it will automaticly change the id by new id base on uuid3 and uuid4
-2- To use ForeignKey field you should import it from sharding.fields
+1. To sharding model, you must inihrite ShardedModel, it will automaticly change the id by new id base on uuid3 and uuid4
+2. To use ForeignKey field you should import it from sharding.fields
 
 Exemple:
 ```
@@ -63,7 +63,7 @@ class  Product(ShardedModel):
 ```
 
 ### Step 3:
-1- To sharding users, you must inihrite ShardedUser, it will automaticly change the id by new id base on uuid3 and uuid4, then add AUTH_USER_MODEL = 'accounts.User' to settings.py
+1. To sharding users, you must inihrite ShardedUser, it will automaticly change the id by new id base on uuid3 and uuid4, then add AUTH_USER_MODEL = 'accounts.User' to settings.py
 
 Exemple:
 ```
@@ -74,7 +74,7 @@ class User(ShardedUser):
     
 ```
 
-2- add sharded forms to form.py
+2. add sharded forms to form.py
 
 Exemple:
 ```
@@ -95,7 +95,7 @@ class UserAdminChangeForm(ShardedUserAdminChangeForm):
 
 ```    
 
-3- add ShardedUserAdminModel to admin.py
+3. add ShardedUserAdminModel to admin.py
 
 
 Exemple:
