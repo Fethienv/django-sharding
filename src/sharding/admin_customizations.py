@@ -1,6 +1,6 @@
 
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .forms import ShardedRegisterForm, ShardedUserAdminCreationForm, ShardedUserAdminChangeForm
+from .forms import ShardedUserRegisterForm, ShardedUserAdminCreationForm, ShardedUserAdminChangeForm
 
 ################# User Admin Model ############################
 class ShardedUserAdminModel(BaseUserAdmin):

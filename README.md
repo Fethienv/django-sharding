@@ -3,9 +3,9 @@ Simple horizontal scaling utilities for django framework
 
 
 ## Installations:
-- clone folder sharding and add it to settings.py in INSTALED_APPS
-- add your databases and make sure the key of user database is user_1
-- add the following settings to settings.py:
+1. clone folder sharding and add it to settings.py in INSTALED_APPS
+2. add your databases and make sure the key of user database is user_1
+3. add the following settings to settings.py:
 
 DATABASE_MAX_ROWS = 100
 
@@ -16,6 +16,19 @@ USER_INIT_DATABASE = 'user_1' # must be the same user database key in DATABASES
 SHARDING_USER_MODEL = True
 
 FIXTURE_DIRS = ['sharding.fixtures',]
+
+4. run makemigrations
+5. migrate all databases:
+```
+python manage.py migrate
+python manage.py migrate --database=user_1
+
+...
+
+```
+
+5. load fixtures
+python manage.py loaddata --database=user_1 user
 
 ## Use guide:
 
