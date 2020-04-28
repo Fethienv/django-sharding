@@ -1,14 +1,14 @@
 from django import forms
-from sharding.forms import ShardedRegisterForm, ShardedUserAdminCreationForm, ShardedAdminChangeForm
+from sharding.forms import ShardedUserRegisterForm, ShardedUserAdminCreationForm, ShardedUserAdminChangeForm
 from .models import User
 
 
-class RegisterForm(ShardedRegisterForm):
+class RegisterForm(ShardedUserRegisterForm):
     pass
 
 class UserAdminCreationForm(ShardedUserAdminCreationForm):
     pass
 
-class UserAdminChangeForm(ShardedAdminChangeForm):
+class UserAdminChangeForm(ShardedUserAdminChangeForm):
     pass
 
