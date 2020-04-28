@@ -21,7 +21,7 @@ FIXTURE_DIRS = ['sharding.fixtures',]
 
 ### Step 1: 
 Open admin site go to Databases and add all your datatbases 
-Note: 
+- Note: 
 1. model name field should be same as model
 2. model name + _ + number field should be same as database key in settings.py
 
