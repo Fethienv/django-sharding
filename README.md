@@ -1,6 +1,13 @@
 # django-sharding
 Simple horizontal scaling utilities for django framework
 
+- Short def:
+    * Scalability is the property of a system to handle a growing amount of work by adding resources to the system
+    * Scaling horizontally (out/in) means adding more nodes to (or removing nodes from) a system, such as adding a new computer to a distributed software application. An example might involve scaling out from one web server to three.
+    * With horizontal-scaling it is often easier to scale dynamically by adding more machines into the existing pool
+
+
+This simple package allows the developer to add more than one table to one Model, each table limited by the maximum rows specified in settings.py
 
 ## Installation:
 1. clone folder sharding and add it to settings.py in INSTALED_APPS
@@ -79,11 +86,16 @@ python manage.py loaddata --database=default user
 python manage.py loaddata --database=user_1 user
 ```
 
-6. create supper user
+6. create super user
 ```
 python manage.py createsuperuser
 ```
 7. run server
+
+```
+python manage.py runserver
+```
+
 8. login to admin site
 
 ## User guide:
