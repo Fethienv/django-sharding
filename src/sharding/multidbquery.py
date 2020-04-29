@@ -391,8 +391,16 @@ class MultiDBQuerySet:
     def annotate(self, *args, **kwargs):
         pass
 
-    def order_by(self, *field_names):
-        pass
+    def order_by(self, *field_names): # to reverify
+
+        """Return a new QuerySet instance with the ordering changed."""
+        assert not self.query.is_sliced, \
+            "Cannot reorder a query once a slice has been taken."
+        obj = self._clone()
+        obj.query.clear_ordering(force_empty=False)
+        obj.query.add_ordering(*field_names)
+        return obj
+        
 
     def distinct(self, *field_names):
         pass

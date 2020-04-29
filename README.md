@@ -53,6 +53,8 @@ DATABASES = {
 
 ```
 
+Note: all keys should be in lower letters
+
 3. add the following settings to settings.py:
 
 ```
@@ -103,7 +105,7 @@ python manage.py runserver
 ### Step 1: 
 whene admin site opened go to Databases and add all your datatbases 
 - Note: 
-1. model name field should be same as model
+1. model name field should be same as model, Note: name should be in lower letters
 2. model name + _ + number field should be same as database key in settings.py
 
 ### Step 2:

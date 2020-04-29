@@ -216,7 +216,8 @@ class ShardedModelManager(models.Manager):
 
     def get_queryset(self):
         db_list = Databases.objects.all().filter(model_name=self.model._meta.model_name).exclude(count=0)
-        if db_list.count() != 0:           
+        if db_list.count() != 0:   
+            #return MultiDBQuerySet(model=self.model, db_list=db_list)     
             return reduce(QuerySetSequence, [super(ShardedModelManager, self).get_queryset().using(db.get_name) for db in db_list])           
         return super(ShardedModelManager, self).get_queryset().none()
 

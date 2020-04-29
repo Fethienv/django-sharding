@@ -4,9 +4,10 @@ from django.conf import settings
 from django.http import HttpResponse
 
 from .models.products import Product
+from .models.stores import Store
 from django.conf.urls import url
 
-from .forms import ProductAdminChangeForm, ProductAdminCreationForm
+from .forms import ProductAdminCreationForm, StoreAdminForm
 from sharding.models import Databases
 
 class MyAdminSite(AdminSite):
@@ -25,12 +26,16 @@ class MyAdminSite(AdminSite):
 admin_site = MyAdminSite()
 
 
+class StoresAdmin(admin.ModelAdmin):
+    form   = StoreAdminForm
+
+admin.site.register(Store, StoresAdmin)
 
 #@admin.register(Product)
 class ProductsAdmin(admin.ModelAdmin):
-    list_display = ['name',]
-    search_fields = ('name',)
-    list_per_page = 15
+    #list_display = ['name',]
+    #search_fields = ('name',)
+    #list_per_page = 15
     #view_on_site = True
     #list_select_related = True
     #readonly_fields=('nid',)

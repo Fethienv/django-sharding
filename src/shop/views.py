@@ -15,8 +15,8 @@ class HomePageView(View):
 
     def get(self, request, *args, **kwargs):
 
-        ProductsA = Product.objects.filter(name="car1")
-        ProductsB = Product.objects.filter(name="car1")
+        ProductsA = Product.objects.filter(name="car")
+        ProductsB = Product.objects.filter(name="car")
         
 
         print(ProductsA & ProductsB )
@@ -27,8 +27,8 @@ class HomePageView(View):
         
         content_type = ''#'application/xhtml+xml'
     
-        Products1 = MultiDBQuerySet(model = Product).filter(name="car1")
-        Products2 = MultiDBQuerySet(model = Product).filter(name="car1")
+        Products1 = MultiDBQuerySet(model = Product).filter(name="car")
+        Products2 = MultiDBQuerySet(model = Product).filter(name="car")
 
 
         print(Products1 & Products2 )

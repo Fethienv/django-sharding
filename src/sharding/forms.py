@@ -12,6 +12,9 @@ User = get_user_model()
 
 class ShardedModelForm(forms.ModelForm):
 
+    def _save_m2m(self):
+        pass
+
     def save(self, commit=True):
         
         db = select_write_db(model_name=self._meta.model._meta.model_name)

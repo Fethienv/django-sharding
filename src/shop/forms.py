@@ -3,6 +3,9 @@ from django import forms
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 
 from shop.models.products import Product
+from .models.stores import Store
+
+from sharding.forms import ShardedModelForm
 
 class ProductAdminChangeForm(forms.ModelForm):
     """A form for updating users. Includes all the fields on
@@ -51,6 +54,15 @@ from django.core.exceptions import ValidationError
 User = get_user_model()
 
 #from sharding.models import Databases
+
+class StoreAdminForm(forms.ModelForm):
+    
+    def _save_m2m(self):
+        pass
+
+    class Meta:
+        model = Store
+        fields = ( 'name', 'slug', 'vendor', 'products')
 
 class ProductAdminCreationForm(forms.ModelForm):
     """

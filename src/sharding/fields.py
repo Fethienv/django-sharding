@@ -20,7 +20,7 @@ class ShardedForeignKey(models.ForeignKey):
 
         if not isinstance(to, str):
             if self.remote_field.model.SHAREDED_MODEL:
-                self.db_list_for_read = db_list_for_read(model_name=str(self.remote_field.model._meta.verbose_name))
+                self.db_list_for_read = db_list_for_read(model_name=str(self.remote_field.model._meta.verbose_name).lower())
             else:
                 self.db_list_for_read = None       
 
@@ -101,4 +101,52 @@ class ShardedForeignKey(models.ForeignKey):
         return field
 
     #def on_delete
-    #def ManytoMany
+
+class ShardedManyToManyField(models.ManyToManyField):
+
+    def __init__(self, to, related_name=None, related_query_name=None,
+                 limit_choices_to=None, symmetrical=None, through=None,
+                 through_fields=None, db_constraint=True, db_table=None,
+                 swappable=True,db_for_read = None, **kwargs):
+
+        self.db_for_read = db_for_read
+        self.db_list_for_read = None
+
+        super(ShardedManyToManyField, self).__init__(to, related_name=None, related_query_name=None,
+                 limit_choices_to=None, symmetrical=None, through=None,
+                 through_fields=None, db_constraint=True, db_table=None,
+                 swappable=True, **kwargs)
+
+        if not isinstance(to, str):
+            
+            if self.remote_field.model.SHAREDED_MODEL:
+                self.db_list_for_read = db_list_for_read(model_name=str(self.remote_field.model._meta.verbose_name).lower())
+            else:
+                self.db_list_for_read = None 
+
+
+    def formfield(self, *, using=None, **kwargs):
+
+        if self.db_list_for_read and self.db_list_for_read.count() != 0 and self.remote_field.model.SHAREDED_MODEL: 
+                queryset = reduce(QuerySetSequence, [self.remote_field.model._default_manager.raw_queryset().using(db.get_name) for db in self.db_list_for_read]) 
+        else:
+            if self.db_for_read:
+                using = self.db_for_read
+            else:
+                using = using
+
+            queryset = self.remote_field.model._default_manager.using(using)
+
+        defaults = {
+            'form_class': forms.ModelMultipleChoiceField,
+            'queryset': queryset,#self.remote_field.model._default_manager.using(using),
+            **kwargs,
+        }
+        # If initial is passed in, it's a list of related objects, but the
+        # MultipleChoiceField takes a list of IDs.
+        if defaults.get('initial') is not None:
+            initial = defaults['initial']
+            if callable(initial):
+                initial = initial()
+            defaults['initial'] = [i.pk for i in initial]
+        return super().formfield(**defaults)

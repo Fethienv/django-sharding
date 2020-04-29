@@ -101,15 +101,15 @@ DATABASES = {
         'USER': 'sqlite3_shop',
         'PASSWORD': 'veryPriv@ate'
     },
-    'shop_1': { # range 1-100
+    'store_1': { # range 1-100
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'shop_1-primary.sqlite3'),
+        'NAME': os.path.join(BASE_DIR, 'store_1-primary.sqlite3'),
         'USER': 'sqlite3_shop',
         'PASSWORD': 'veryPriv@ate'
     },
-    'shop_2': { # range 101-200
+    'store_2': { # range 101-200
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'shop_2-primary.sqlite3'),
+        'NAME': os.path.join(BASE_DIR, 'store_2-primary.sqlite3'),
         'USER': 'sqlite3_shop',
         'PASSWORD': 'veryPriv@ate'
     },
