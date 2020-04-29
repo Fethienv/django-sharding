@@ -9,9 +9,9 @@ Simple horizontal scaling utilities for django framework
 
 This simple package allows the developer to add more than one table to one Model, each table limited by the maximum rows specified in settings.py
 
-<div style="text-align:center">
-![Image of Scaling](https://camo.githubusercontent.com/3b865eebc64c4b1d31640c853ea76d25c7c894b6/68747470733a2f2f692e737461636b2e696d6775722e636f6d2f4f6e33744f2e706e67)
-</div>
+<p align="center">
+  <img width="460" height="300" src="https://camo.githubusercontent.com/3b865eebc64c4b1d31640c853ea76d25c7c894b6/68747470733a2f2f692e737461636b2e696d6775722e636f6d2f4f6e33744f2e706e67">
+</p>
 
 ## Installation:
 1. clone folder sharding and add it to settings.py in INSTALED_APPS
