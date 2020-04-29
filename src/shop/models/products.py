@@ -13,18 +13,16 @@ from sharding.fields import ShardedForeignKey
 
 user = get_user_model()
 
+#from sharding.utils import db_list_for_read, select_read_db
+
+
 class  Product(ShardedModel):
-  
+   
     name  = models.CharField(db_index=True, max_length=120)
     desc  = models.CharField(db_index=True, max_length=120)
     slug  = models.SlugField(db_index=True, unique=True )
 
-    vendor = ShardedForeignKey(
-        user,
-        on_delete=models.DO_NOTHING,
-        db_constraint=False,  # May be using anothor database
-        #db_for_read=None , # if single database for read
-    )
+    vendor = ShardedForeignKey(user, on_delete=models.DO_NOTHING, blank=True, null=True)
 
     def __str__(self):
         return self.name

@@ -18,12 +18,16 @@ def select_write_db(model_name):
 
 # get replica db list for ForeignKeyFiled or ManyToManyField
 def db_list_for_read(model_name):
-    db_list = Databases.objects.all().filter(model_name=model_name).exclude(count=0)
 
-    if db_list.count() == 0:
-        raise Error(f"No database for {model_name} Model, please add it from admin")
+    try:
+        db_list = Databases.objects.all().filter(model_name=model_name).exclude(count=0)
 
-    return db_list
+        if db_list.count() == 0:
+            raise Error(f"No database for {model_name} Model, please add it from admin")
+
+        return db_list
+    except:
+        return None
 
 # select one replica read db
 # not completed yet

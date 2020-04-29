@@ -28,7 +28,7 @@ class ShardedModelForm(forms.ModelForm):
         Instance.nid   = prefix + "-" + str(uuid.uuid4())[9:] 
 
         if commit:
-            Instance.save()
+            Instance.save(commit=False)
         return Instance
 
 class ShardedUserRegisterForm(forms.ModelForm):
@@ -93,7 +93,7 @@ class ShardedUserAdminCreationForm(ShardedModelForm):
         user.set_password(self.cleaned_data["password1"])
 
         if commit:
-            user.save()
+            user.save(commit=False)
         return user
 
 

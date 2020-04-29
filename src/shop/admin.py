@@ -34,7 +34,7 @@ class ProductsAdmin(admin.ModelAdmin):
     #view_on_site = True
     #list_select_related = True
     #readonly_fields=('nid',)
-    change = ProductAdminChangeForm
+    #change = ProductAdminChangeForm
     form   = ProductAdminCreationForm
 
     # def get_form(self, request, obj=None, **kwargs):

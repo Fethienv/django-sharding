@@ -2,7 +2,7 @@
 import uuid
 from functools import reduce
 
-from django.db import models
+from django.db import models, Error
 from django.utils import timezone
 from django.conf import settings
 
@@ -44,7 +44,10 @@ class  ShardedUserManager(BaseUserManager):
         user.admin = is_superuser
 
         if settings.SHARDING_USER_MODEL:
-            user.save(using=str(db.get_name))
+            try:
+                user.save(using=str(db.get_name))
+            except:
+                raise Error(f"No database for {self.model._meta.model_name} Model, please add it from admin")
             db.count = db.count + 1
             db.save()
         else:
@@ -65,10 +68,14 @@ class  ShardedUserManager(BaseUserManager):
 
     def get_queryset(self):
         if settings.SHARDING_USER_MODEL:
-            db_list = Databases.objects.all().filter(model_name=self.model._meta.model_name).exclude(count=0)
-            if db_list.count() != 0:       
-                return reduce(QuerySetSequence, [super(ShardedUserManager, self).get_queryset().using(db.get_name) for db in db_list])          
-            return super(ShardedUserManager, self).get_queryset().none()
+            try:
+                db_list = Databases.objects.all().filter(model_name=self.model._meta.model_name).exclude(count=0)
+                if db_list.count() != 0:
+                    rs = reduce(QuerySetSequence, [super(ShardedUserManager, self).get_queryset().using(db.get_name) for db in db_list])    
+                    return rs        
+                return super(ShardedUserManager, self).get_queryset().none()
+            except:
+                return super(ShardedUserManager, self).get_queryset() 
         else:
             return super(ShardedUserManager, self).get_queryset()
     

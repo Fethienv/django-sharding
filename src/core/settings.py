@@ -32,7 +32,7 @@ ALLOWED_HOSTS = ['127.0.0.1',]
 # Application definition
 
 INSTALLED_APPS = [
-    
+    'sharding.apps.ShardingConfig',
     #'suit',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     #'utils.apps.UtilsConfig',
-    'sharding.apps.ShardingConfig',
+    
     'shop.apps.ShopConfig',
     'accounts.apps.AccountsConfig',
     #'core.HorizontalMetadata',

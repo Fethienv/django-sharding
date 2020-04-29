@@ -9,20 +9,23 @@ from .utils import select_write_db
 class ShardingRouter:
 
     route_excluded_app_labels = [] 
-    route_app_labels = []
+    route_app_labels = ['accounts','products']
 
     def db_for_read(self, model, **hints):
         """
         Reads go to a randomly-chosen replica.
         """
+        #if model._meta.app_label in self.route_app_labels:
+            #return select_write_db(model._meta.model_name)
         return 'default' #random.choice(['replica1', 'replica2']) 
 
     def db_for_write(self, model, **hints):
         """
         Writes always go to primary.
         """
-        #if model._meta.app_label in self.route_app_labels:
-            #return select_write_db(model._meta.model_name)
+        if model._meta.app_label in self.route_app_labels:
+            return select_write_db(model._meta.model_name)
+
         return  'default'
         
 

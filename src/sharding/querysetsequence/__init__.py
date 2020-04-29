@@ -312,6 +312,7 @@ class QuerySetSequence(ComparatorMixin):
 
     def __init__(self, *args, **kwargs):
 
+        self.kwargs = kwargs
         self._set_querysets(args)
 
         self.model = args[0].model
@@ -876,3 +877,4 @@ class QuerySetSequence(ComparatorMixin):
     #def query(self):
        # """Returns a list of the QuerySet objects which form the sequence."""
         #return self._querysets
+

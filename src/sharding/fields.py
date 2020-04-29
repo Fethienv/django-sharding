@@ -11,17 +11,21 @@ class ShardedForeignKey(models.ForeignKey):
 
     def __init__(self, to, on_delete, related_name=None, related_query_name=None,
                  limit_choices_to=None, parent_link=False, to_field=None,
-                 db_constraint=True,db_for_read = None, **kwargs):# db_for_read = None, db_list_for_read = None, **kwargs):
+                 db_constraint=False,db_for_read = None, **kwargs):
 
         self.db_for_read = db_for_read
         self.db_list_for_read = None
 
-        super(ShardedForeignKey, self).__init__(to, on_delete, related_name, related_query_name, limit_choices_to, parent_link, to_field, db_constraint, **kwargs)
+        super(ShardedForeignKey, self).__init__(to=to, on_delete=on_delete, related_name=related_name, related_query_name=related_query_name, limit_choices_to=limit_choices_to, parent_link=parent_link, to_field=to_field, db_constraint=db_constraint, **kwargs)
 
         if not isinstance(to, str):
-            self.db_list_for_read = db_list_for_read(model_name=str(self.remote_field.model._meta.verbose_name))       
+            if self.remote_field.model.SHAREDED_MODEL:
+                self.db_list_for_read = db_list_for_read(model_name=str(self.remote_field.model._meta.verbose_name))
+            else:
+                self.db_list_for_read = None       
 
     def validate(self, value, model_instance):
+
         if self.remote_field.parent_link:
             return
         super(models.ForeignKey,self).validate(value, model_instance)
