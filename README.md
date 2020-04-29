@@ -2,8 +2,27 @@
 Simple horizontal scaling utilities for django framework
 
 
-## Installations:
+## Installation:
 1. clone folder sharding and add it to settings.py in INSTALED_APPS
+
+```
+INSTALLED_APPS = [
+    
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    'sharding.apps.ShardingConfig',
+    'accounts.apps.AccountsConfig',
+
+    .....
+
+]
+```
+
 2. add your databases and make sure the key of user database is user_1
 
 ```
@@ -67,7 +86,7 @@ python manage.py createsuperuser
 7. run server
 8. login to admin site
 
-## Use guide:
+## User guide:
 
 ### Step 1: 
 whene admin site opened go to Databases and add all your datatbases 
