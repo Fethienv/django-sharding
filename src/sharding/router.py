@@ -23,11 +23,12 @@ class ShardingRouter:
         """
         Writes always go to primary.
         """
-        if model._meta.app_label in self.route_app_labels:
+        #if model._meta.app_label in self.route_app_labels:
+        try:
             db = select_write_db(model_name = model._meta.model_name)
             return str(db)
-
-        return  'default'
+        except:
+            return  'default'
         
 
     def allow_relation(self, obj1, obj2, **hints):

@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib.auth.models import (BaseUserManager, AbstractBaseUser)
 
 from .querysetsequence import QuerySetSequence
-from .multidbqueryset import MultiDBQuerySet
+from .multidbquery import MultiDBQuerySet
 
 from .models import Databases
 from .utils import select_write_db
@@ -46,12 +46,16 @@ class  ShardedUserManager(BaseUserManager):
         user.admin = is_superuser
 
         if settings.SHARDING_USER_MODEL:
-            try:
-                #if is_staff and is_superuser:
-                    #user.save()
-                user.save(using=str(db.get_name))
-            except:
-                raise Error(f"No database for {self.model._meta.model_name} Model, please add it from admin")
+            #try:
+                # to delete after sharding permissions table
+                # because permissions table are in default
+            if is_staff and is_superuser:
+                #kwargs['using'] ='default'
+                user.save(using='default')
+
+            user.save(using=str(db.get_name))
+            #except:
+                #raise Error(f"No database for {self.model._meta.model_name} Model, please add it from admin")
             db.count = db.count + 1
             db.save()
         else:
@@ -171,8 +175,11 @@ class ShardedUser(AbstractBaseUser):
                 else:
                     super(ShardedUser, self).save(*args, **kwargs, using=str(db_name))
 
+                # to delete after sharding permissions table
+                # because permissions table are in default
                 if self.is_admin and self.is_staff:
-                    super(ShardedUser, self).save(*args, **kwargs, using='default')
+                    kwargs['using'] ='default'
+                    super(ShardedUser, self).save(*args, **kwargs)
             else:
                 # get prefix
                 prefix = db.get_prefix
@@ -185,8 +192,11 @@ class ShardedUser(AbstractBaseUser):
                 else:
                     super(ShardedUser, self).save(*args, **kwargs, using=db.get_name)
 
+                # to delete after sharding permissions table
+                # because permissions table are in default
                 if self.is_admin and self.is_staff:
-                    super(ShardedUser, self).save(*args, **kwargs, using='default')
+                    kwargs['using'] ='default'
+                    super(ShardedUser, self).save(*args, **kwargs)#, using='default')
 
                 # update count
                 db.count = db.count + 1
@@ -245,4 +255,6 @@ class ShardedModel(models.Model):
             # update count
             db.count = db.count + 1
             db.save()
+
+    #def delete(self, *args, **kwargs):
 

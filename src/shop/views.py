@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from sharding.models import Databases
 from shop.models.products import Product
 
-from sharding.multidbqueryset import MultiDBQuerySet
+from sharding.multidbquery import MultiDBQuerySet
 
 import uuid
 

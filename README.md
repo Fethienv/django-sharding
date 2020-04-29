@@ -28,7 +28,10 @@ python manage.py migrate --database=user_1
 ```
 
 5. load fixtures
+```
 python manage.py loaddata --database=default user
+python manage.py loaddata --database=user_1 user
+```
 
 ## Use guide:
 

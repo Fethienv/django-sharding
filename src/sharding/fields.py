@@ -99,3 +99,6 @@ class ShardedForeignKey(models.ForeignKey):
             **kwargs,
         })
         return field
+
+    #def on_delete
+    #def ManytoMany
