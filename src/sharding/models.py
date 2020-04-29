@@ -18,7 +18,7 @@ class Databases(models.Model):
         database_name = self.model_name + "_ "+ str(self.number)
         uuid3 = uuid.uuid3(uuid.NAMESPACE_DNS,database_name)
         self.prefix = str(str(uuid3)[:8])
-        super(Databases, self).save(*args, **kwargs, using="default")
+        super(Databases, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.model_name + "_"+ str(self.number)

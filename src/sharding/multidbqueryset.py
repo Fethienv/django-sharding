@@ -9,6 +9,8 @@ from django.db.models import sql
 from django.db.models.query import EmptyQuerySet, QuerySet
 from django.db.models.query_utils import Q
 from django.utils.version import get_version
+from django.core.exceptions import (FieldError, MultipleObjectsReturned,
+                                    ObjectDoesNotExist)
 
 from sharding.querysetsequence import QuerySetSequence
 
@@ -198,8 +200,32 @@ class MultiDBQuerySet:
         """
         return sum(qs.count() for qs in self.multidbquerysets)
 
-    def get(self, *args, **kwargs):
-        pass
+    def get(self, **kwargs):
+        clone = self.filter(**kwargs)
+        querysets =[]
+        result = None
+        for qs in clone.multidbquerysets:
+            try:
+                obj = qs.get()
+            except ObjectDoesNotExist:
+                pass
+            # Don't catch the MultipleObjectsReturned(), allow it to raise.
+            else:
+                # If a second object is found, raise an exception.
+                if result:
+                    raise MultipleObjectsReturned()
+                result = obj
+                querysets.append(obj)
+
+        # Checked all QuerySets and no object was found.
+        if result is None:
+            raise ObjectDoesNotExist()
+
+        # Return the only result found.
+        clone.multidbquerysets = querysets
+        print("clone", clone.multidbquerysets[0])
+        #return clone.multidbquerysets[0]#self._clone()
+        return result
 
     def create(self, **kwargs):
         pass
@@ -387,7 +413,10 @@ class MultiDBQuerySet:
 
     def using(self, alias):
         """Select which database this QuerySet should execute against."""
-        raise NotImplementedError()
+        clone = self._clone()
+        clone._db = alias
+        return clone
+        #raise NotImplementedError()
 
     ###################################
     # PUBLIC INTROSPECTION ATTRIBUTES #

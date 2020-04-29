@@ -9,6 +9,8 @@ from django.conf import settings
 from django.contrib.auth.models import (BaseUserManager, AbstractBaseUser)
 
 from .querysetsequence import QuerySetSequence
+from .multidbqueryset import MultiDBQuerySet
+
 from .models import Databases
 from .utils import select_write_db
  
@@ -45,6 +47,8 @@ class  ShardedUserManager(BaseUserManager):
 
         if settings.SHARDING_USER_MODEL:
             try:
+                #if is_staff and is_superuser:
+                    #user.save()
                 user.save(using=str(db.get_name))
             except:
                 raise Error(f"No database for {self.model._meta.model_name} Model, please add it from admin")
@@ -68,11 +72,13 @@ class  ShardedUserManager(BaseUserManager):
 
     def get_queryset(self):
         if settings.SHARDING_USER_MODEL:
+
             try:
                 db_list = Databases.objects.all().filter(model_name=self.model._meta.model_name).exclude(count=0)
+                
                 if db_list.count() != 0:
-                    rs = reduce(QuerySetSequence, [super(ShardedUserManager, self).get_queryset().using(db.get_name) for db in db_list])    
-                    return rs        
+                    #return MultiDBQuerySet(model=self.model, db_list=db_list)
+                    return reduce(QuerySetSequence, [super(ShardedUserManager, self).get_queryset().using(db.get_name) for db in db_list])        
                 return super(ShardedUserManager, self).get_queryset().none()
             except:
                 return super(ShardedUserManager, self).get_queryset() 
@@ -150,6 +156,7 @@ class ShardedUser(AbstractBaseUser):
 
     # for user multidatabase table save 
     def save(self, *args, **kwargs):
+ 
         if settings.SHARDING_USER_MODEL:
             # select database name
             db = select_write_db(model_name=self._meta.model_name)
@@ -163,16 +170,24 @@ class ShardedUser(AbstractBaseUser):
                     super(ShardedUser, self).save(*args, **kwargs)
                 else:
                     super(ShardedUser, self).save(*args, **kwargs, using=str(db_name))
+
+                if self.is_admin and self.is_staff:
+                    super(ShardedUser, self).save(*args, **kwargs, using='default')
             else:
                 # get prefix
                 prefix = db.get_prefix
                 # create nid
                 self.nid = str(prefix)+ "-" + str(uuid.uuid4())[9:]
                 # write to selected database 
+                
                 if kwargs["using"]:
                     super(ShardedUser, self).save(*args, **kwargs)
                 else:
                     super(ShardedUser, self).save(*args, **kwargs, using=db.get_name)
+
+                if self.is_admin and self.is_staff:
+                    super(ShardedUser, self).save(*args, **kwargs, using='default')
+
                 # update count
                 db.count = db.count + 1
                 db.save()

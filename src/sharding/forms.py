@@ -28,7 +28,7 @@ class ShardedModelForm(forms.ModelForm):
         Instance.nid   = prefix + "-" + str(uuid.uuid4())[9:] 
 
         if commit:
-            Instance.save(commit=False)
+            Instance.save()
         return Instance
 
 class ShardedUserRegisterForm(forms.ModelForm):
@@ -37,7 +37,7 @@ class ShardedUserRegisterForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ('email',)
+        fields = ('email','admin', 'staff')
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
@@ -64,7 +64,7 @@ class ShardedUserAdminCreationForm(ShardedModelForm):
 
     class Meta:
         model = User
-        fields = ('email',)
+        fields = ('email','admin', 'staff')
 
     def clean_password2(self):
         # Check that the two password entries match
@@ -93,7 +93,7 @@ class ShardedUserAdminCreationForm(ShardedModelForm):
         user.set_password(self.cleaned_data["password1"])
 
         if commit:
-            user.save(commit=False)
+            user.save()
         return user
 
 
