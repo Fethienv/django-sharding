@@ -2,67 +2,91 @@
 from django import forms
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 
+from django.contrib.auth import get_user_model   
+from django.core.exceptions import ValidationError 
+
 from shop.models.products import Product
 from .models.stores import Store
+#from sharding.models import Databases
 
 from sharding.forms import ShardedModelForm
 
-class ProductAdminChangeForm(forms.ModelForm):
-    """A form for updating users. Includes all the fields on
-    the user, but replaces the password field with admin's
-    password hash display field.
-    """
-    #password = ReadOnlyPasswordHashField()
+User = get_user_model()
 
-    #name  = models.CharField(db_index=True, max_length=120)
-    #slug  = models.SlugField(db_index=True, unique=True )
-   
+from itertools import islice, chain
+
+class CustomMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj):
+        return obj.__str__()
+
+
+class StoreAdminForm(forms.ModelForm):
+    """A form for create and update Stores. """
+
+    # def _save_m2m(self):
+    #     """
+    #     Save the many-to-many fields and generic relations for this form.
+    #     """
+    #     cleaned_data = self.cleaned_data
+    #     exclude = self._meta.exclude
+    #     fields = self._meta.fields
+    #     opts = self.instance._meta
+    #     # Note that for historical reasons we want to include also
+    #     # private_fields here. (GenericRelation was previously a fake
+    #     # m2m field).
+    #     for f in chain(opts.many_to_many, opts.private_fields):
+    #         if not hasattr(f, 'save_form_data'):
+    #             continue
+    #         if fields and f.name not in fields:
+    #             continue
+    #         if exclude and f.name in exclude:
+    #             continue
+    #         if f.name in cleaned_data:
+    #             from django.core import serializers
+
+                
+
+    #             # data = serializers.serialize('json', cleaned_data['products2'])
+    #             # print (data)
+    #             # obj = serializers.deserialize('json', data, handle_forward_references=True)
+    #             # print (obj.filter(pk='d45170fe-8895-4776-9d96-396573222905'))
+    #             pass
+    #             #f.save_form_data(self.instance, cleaned_data[f.name])
+
+    # def save(self, commit=True):
+    #     """
+    #     Save this form's self.instance object if commit=True. Otherwise, add
+    #     a save_m2m() method to the form which can be called after the instance
+    #     is saved manually at a later time. Return the model instance.
+
+
+
+    #     """
+    #     #print(self.instance._meta.ShardedManyToManyField)
+
+    #     #opts = self.instance._meta.ShardedManyToManyField
+
+    #     #print("opts: ", opts)
+
+
+    #     instance = super(StoreAdminForm, self).save(commit=False)
+
+    #     return instance
+
+    #p_products = CustomMultipleChoiceField(
+     #   queryset=Product.objects.all()
+    #)
+
+    class Meta:
+        model = Store
+        fields = ( 'name', 'slug', 'products')#, "p_products") 
+
+class ProductAdminChangeForm(forms.ModelForm):
+    """A form for updating product. """
 
     class Meta:
         model = Product
         fields = ('name', 'slug', )
-
-
-    # def save(self, commit=True):
-
-    #     vendor = self.cleaned_data.get("vendor")
-    #     print(vendor)
-
-    #     mm = self.model()
-    #     print(mm)
-
-    #     product = super(UserAdminCreationForm, self).save(commit=False, vendor="123456")
-    #     # Save the provided password in hashed format
-
-    #     # uuid3 = uuid.uuid3(uuid.NAMESPACE_DNS,'sahari')
-    #     # uuid4 = uuid.uuid4()
-    #     # uuidn =  str(uuid3)[:9] + str(uuid4)[9:]  
-    #     # 
-         
-        
-    #     product = super(ProductAdminChangeForm, self).save(commit=False)
-    #     #print(product) 
-    #     #.slug
-    #     # user.nid   = str(uuidn)
-    #     # user.set_password(self.cleaned_data["password1"])
-    #     # if commit:
-    #     #     user.save()
-    #     return product
-
-from django.contrib.auth import get_user_model   
-from django.core.exceptions import ValidationError 
-User = get_user_model()
-
-#from sharding.models import Databases
-
-class StoreAdminForm(forms.ModelForm):
-    
-    def _save_m2m(self):
-        pass
-
-    class Meta:
-        model = Store
-        fields = ( 'name', 'slug', 'vendor', 'products')
 
 class ProductAdminCreationForm(forms.ModelForm):
     """

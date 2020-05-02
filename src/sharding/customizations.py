@@ -206,6 +206,23 @@ class ShardedUser(AbstractBaseUser):
 
 
 ################# All Models ############################
+
+class many_to_manyManager(models.Manager):
+    def get_queryset(self):
+        if self.data_name:
+            qs = super(many_to_manyManager, self).get_queryset().using(self.data_name)#.filter(product_id=self.filtreds)
+        else:
+            qs = super(many_to_manyManager, self).get_queryset()
+        #for qss in qs:
+           # print("qss: ", qss)  
+        print("many_to_manyManager qs:", qs)
+        return qs
+
+def many_to_many_save(self, *args, **kwargs):
+    print("saved")
+    return super().save(*args, **kwargs).using(self.data_name)
+
+
 class ShardedModelManager(models.Manager):
 
     def raw_queryset(self, using = None):
@@ -215,47 +232,135 @@ class ShardedModelManager(models.Manager):
             return super(ShardedModelManager, self).get_queryset()
 
     def get_queryset(self):
-        db_list = Databases.objects.all().filter(model_name=self.model._meta.model_name).exclude(count=0)
-        if db_list.count() != 0:   
-            #return MultiDBQuerySet(model=self.model, db_list=db_list)     
-            return reduce(QuerySetSequence, [super(ShardedModelManager, self).get_queryset().using(db.get_name) for db in db_list])           
-        return super(ShardedModelManager, self).get_queryset().none()
+        #print("hi, this is: ", self.model)
+        if self.model.SHAREDED_MODEL:
+            try:
+                db_list = Databases.objects.all().filter(model_name=self.model._meta.model_name).exclude(count=0)
+                
+                if db_list.count() != 0:
+                    #qs = MultiDBQuerySet(model=self.model, db_list=db_list)
+                    qs = reduce(QuerySetSequence, [super(ShardedModelManager, self).get_queryset().using(db.get_name) for db in db_list])  
+                    #qs.update(active=True)
+                    #qs.__class__.filter = self.first() # change qs methods
+                    return qs  
+
+                return super(ShardedModelManager, self).get_queryset().none()
+            except:
+                return super(ShardedModelManager, self).get_queryset() 
+        else:
+            return super(ShardedModelManager, self).get_queryset() 
+
+    def my_custom_sql(self, db_name, db_table,fetech_colomn, where_colomn, where_equ):
+        from django.db import connections
+        with connections[db_name].cursor() as cursor:
+            cursor.execute("SELECT "+ fetech_colomn +" FROM "+ db_table +" WHERE "+ where_colomn +" = %s", [where_equ])
+            #row = cursor.fetchone()
+            row = self.dictfetchall(cursor)
+        
+        #return self.dictfetchall(connections[db_name].cursor())
+        return row
+
+    def dictfetchall(self, cursor):
+        "Return all rows from a cursor as a dict"
+        columns = [col[0] for col in cursor.description]
+        
+        return [
+            dict(zip(columns, row))
+            for row in cursor.fetchall()
+        ]
+
+    def first(self):
+        return "test"
+
+    def get(self, *args, **kwargs):
+        qs = self. get_queryset().get(*args, **kwargs)
+        db_name  = qs._state.db
+        #qs.products.data_name  = db_name
+        if hasattr(self.model._meta,"ShardedManyToManyField"):
+            for remote_field in self.model._meta.ShardedManyToManyField:
+                remote_field.__class__.data_name  = db_name
+                remote_field_name = str(remote_field).split(".")
+                db_table        = str(self.model._meta.app_label.lower())+"_"+str(self.model._meta.verbose_name.lower())+"_"+str(remote_field_name[2])
+                where_colomn    = str(self.model._meta.verbose_name.lower()) + '_id'
+                fetech_colomn   = str(remote_field._meta.verbose_name.lower()) + '_id'
+                results         = self.my_custom_sql(db_name, db_table, fetech_colomn, where_colomn, qs.nid)       
+                remote_field_qs = remote_field.objects.filter(pk__in=[col[fetech_colomn] for col in results])
+                attr = str(remote_field_name[-1].split("'>")[0])
+               
+                if hasattr(qs.__class__, remote_field_name[2]):
+                    delattr(qs.__class__, remote_field_name[2])
+                    setattr(qs.__class__,remote_field_name[2],remote_field_qs)
+                    setattr(qs,remote_field_name[2],remote_field_qs)
+        
+        return qs 
+
+        #return self. get_queryset().get(*args, **kwargs) #super(ShardedModelManager, self).get(self, *args, **kwargs) 
+
 
 
 class ShardedModel(models.Model):
 
     nid   = models.CharField(db_index=True, editable=False, max_length=36, unique=True, primary_key=True)
 
-    objects = ShardedModelManager()
-
     SHAREDED_MODEL  = True
+    db_for_write    = None
+    db_for_read     = None # not completed
+
+    objects = ShardedModelManager()
 
     class Meta:
         ordering = ['nid']
 
     def save(self, *args, **kwargs):
-        #print("in save: ", self.__class__.objects._db)
-        #print("in save: ", self._state.db)
-        # select database name
-        db = select_write_db(model_name=self._meta.model_name)
-        # get prefix
-        prefix = db.get_prefix
-        if self.nid:
+        if self.SHAREDED_MODEL:
+            #print("in model save - self: ", self)
+
+            #print("in model save - args: ", args)
+            #print("in model save - kwargs: ", kwargs)
+
+            # select database name
+            db = select_write_db(model_name=self._meta.model_name)
+            #print("in model save - db: ", db)
+
             # get prefix
-            prefix = str(self.nid)[:8]
-            # get database name
-            db_name = Databases.objects.get_data_by_prefix(prefix)
-            # save
-            #Product
-            super(ShardedModel, self).save(*args, **kwargs, using=str(db_name))
+            prefix = db.get_prefix
+            #print("in model save - prefix: ", prefix)
+            if self.nid:
+                #print("in model save - self.nid exist: ", self.nid)
+                # get prefix
+                prefix = str(self.nid)[:8]
+                #print("in model save - prefix form nid: ", prefix)
+                # get database name
+                db_name = Databases.objects.get_data_by_prefix(prefix)
+                #print("in model save - db_name form nid: ", db_name)
+                # save
+                #Product
+                if not self.db_for_write:
+                    super(ShardedModel, self).save(*args, **kwargs, using=str(db_name))
+                else:
+                    super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
+            else:
+                # create nid
+                self.nid = str(prefix)+ "-" + str(uuid.uuid4())[9:]
+                #print("in model save - self.nid: ", self.nid)
+
+                # write to selected database 
+                if not self.db_for_write:
+                    super(ShardedModel, self).save(*args, **kwargs, using=str(db.get_name))
+                    # update count
+                    db.count = db.count + 1
+                    db.save()
+                else:
+                    super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
+                
         else:
-            # create nid
-            self.nid = str(prefix)+ "-" + str(uuid.uuid4())[9:]
-            # write to selected database 
-            super(ShardedModel, self).save(*args, **kwargs, using=db.get_name)
-            # update count
-            db.count = db.count + 1
-            db.save()
+            if not self.db_for_write:
+                super(ShardedModel, self).save(*args, **kwargs) 
+            else:
+                super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
+            
+
+    # save m2m solutions
 
     #def delete(self, *args, **kwargs):
 

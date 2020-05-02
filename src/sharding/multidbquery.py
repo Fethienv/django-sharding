@@ -223,7 +223,7 @@ class MultiDBQuerySet:
 
         # Return the only result found.
         clone.multidbquerysets = querysets
-        print("clone", clone.multidbquerysets[0])
+        #print("clone", clone.multidbquerysets[0])
         #return clone.multidbquerysets[0]#self._clone()
         return result
 
@@ -383,10 +383,13 @@ class MultiDBQuerySet:
         pass
 
     def select_related(self, *fields):  
-        pass
+        self.multidbquerysets = [qs.select_related(*fields) for qs in self.multidbquerysets]
+        return self._clone()
 
     def prefetch_related(self, *lookups):
-        pass
+        #clone = self._clone()
+        self.multidbquerysets = [qs.prefetch_related(*lookups) for qs in self.multidbquerysets]
+        return self._clone() 
         
     def annotate(self, *args, **kwargs):
         pass

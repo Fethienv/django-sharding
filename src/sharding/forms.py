@@ -12,8 +12,9 @@ User = get_user_model()
 
 class ShardedModelForm(forms.ModelForm):
 
-    def _save_m2m(self):
-        pass
+    # save m2m solutions
+    # def _save_m2m(self):
+    #     pass
 
     def save(self, commit=True):
         
