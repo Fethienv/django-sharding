@@ -9,25 +9,35 @@ from .utils import select_write_db
 class ShardingRouter:
 
     route_excluded_app_labels = [] 
-    route_app_labels = ['store']#,'products']
+    route_app_labels = ['store']
+
 
     def db_for_read(self, model, **hints):
         """
         Reads go to a randomly-chosen replica.
         """
+
         # model_name = str(model._meta.model_name).split("_")[0]
-        # if model_name in self.route_app_labels:
-        #     return "store_1"
-        # else:
-        #     return  'default'
-        return 'default' #random.choice(['replica1', 'replica2']) 
+        # print(model_name)
+        
+        # if model_name == "store":
+        #     #return "store_1"
+        #     print("store_1")
+        # elif model_name == "product":#in self.route_app_labels:
+        #     #return  'product_1'
+        #     print("product_1")
+        return  'default' #random.choice(['replica1', 'replica2']) 
 
     def db_for_write(self, model, **hints):
         """
         Writes always go to primary.
         """
         #if model._meta.app_label in self.route_app_labels:
-        model_name = str(model._meta.model_name).split("_")[0]
+        if hasattr(model, "using_db"):
+            return  model.using_db
+
+        model_name    = str(model._meta.model_name).split("_")[0]
+
         try:
             db = select_write_db(model_name = model_name)
             return str(db)

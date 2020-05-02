@@ -36,4 +36,4 @@ class  Product(ShardedModel):
     class Meta:
         verbose_name = "Product"
         #db_table = '"product_1-primary"."shop_product"'         # for all other backends
-        managed = False
+        #managed = False

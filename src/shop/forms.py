@@ -42,16 +42,16 @@ class StoreAdminForm(forms.ModelForm):
     #         if exclude and f.name in exclude:
     #             continue
     #         if f.name in cleaned_data:
-    #             from django.core import serializers
+    #             #from django.core import serializers
 
                 
-
+    #             print(cleaned_data[f.name])
     #             # data = serializers.serialize('json', cleaned_data['products2'])
     #             # print (data)
     #             # obj = serializers.deserialize('json', data, handle_forward_references=True)
     #             # print (obj.filter(pk='d45170fe-8895-4776-9d96-396573222905'))
-    #             pass
-    #             #f.save_form_data(self.instance, cleaned_data[f.name])
+    #             #pass
+    #             f.save_form_data(self.instance, cleaned_data[f.name])
 
     # def save(self, commit=True):
     #     """

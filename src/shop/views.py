@@ -4,7 +4,7 @@ from django.http import HttpResponse
 
 from sharding.models import Databases
 from shop.models.products import Product
-from shop.models.stores import Store
+from shop.models.stores import Store, NormalStoreModel
 
 from sharding.multidbquery import MultiDBQuerySet
 
@@ -18,10 +18,10 @@ class HomePageView(View):
 
 
         # Sharding tests
-        #ProductsA = Product.objects.filter(name="car")
-        #ProductsB = Product.objects.filter(name="car")
+        ProductsA = Product.objects.filter(name="car")
+        ProductsB = Product.objects.filter(name="car")
 
-        #print(ProductsA & ProductsB )
+        print(ProductsA & ProductsB )
         
 
         context = {'Products': 'Products',
@@ -30,19 +30,35 @@ class HomePageView(View):
         content_type = ''#'application/xhtml+xml'
     
         # MultiDBQuerySet tests
-        #Products1 = MultiDBQuerySet(model = Product).filter(name="car")
-        #Products2 = MultiDBQuerySet(model = Product).filter(name="car")
+        Products1 = MultiDBQuerySet(model = Product).filter(name="car")
+        Products2 = MultiDBQuerySet(model = Product).filter(name="car")
 
 
-        #print(Products1 & Products2 )
+        print(Products1 & Products2 )
+
+        print("----------- NormalStore")
+        store = NormalStoreModel.objects.first()
+
+        
+
+        print ("first: ", store.products.first())
+
+        #print("product", NormalStoreModel.products)
+
+        # for p in NormalStoreModel.products:
+        #     print(p.nid)
 
 
         # manyToMany tests 
-        stores = Store.objects.filter(name="jawlatte.com")
-        print("stores",stores.first().products) # limited need more work because it still return none
-        
-        store = Store.objects.get(name="jawlatte.com") # get work well
-        print("product", store.products)
+        print("----------- stores")
+        stores = Store.objects.filter(name="jawlatte")#.using(s)
+        #print("stores",stores.products) # limited need more work because it still return none
+
+        print("----------- store")
+        store = Store.objects.get(name="jawlatte") # get work well
+        print("product test", store.products.all())
+
+
         
 
         return render(request, 'shop/index.html', context, content_type)

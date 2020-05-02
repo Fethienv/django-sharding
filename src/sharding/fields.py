@@ -15,11 +15,11 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from .querysetsequence import QuerySetSequence
 from .utils import db_list_for_read, select_read_db,select_write_db
-from .customizations import ShardedModel, many_to_manyManager,many_to_many_save
+from .customizations import ShardedModel, many_to_manyManager
 
 from .models import Databases
-import uuid
 
+############################### ShardedForeignKey ################################
 class ShardedForeignKey(models.ForeignKey):
 
     def __init__(self, to, on_delete, related_name=None, related_query_name=None,
@@ -121,60 +121,22 @@ class ShardedForeignKey(models.ForeignKey):
 
 
 
-
-def save_method(self, *args, **kwargs):
-    if self.SHAREDED_MODEL:
-        print("in model save - self: ", self)
-
-        print("in model save - args: ", args)
-        print("in model save - kwargs: ", kwargs)
-
-        # select database name
-        db = select_write_db(model_name=self._meta.model_name)
-        print("in model save - db: ", db)
-
-        # get prefix
-        prefix = db.get_prefix
-        print("in model save - prefix: ", prefix)
-        if self.nid:
-            print("in model save - self.nid exist: ", self.nid)
-            # get prefix
-            prefix = str(self.nid)[:8]
-            print("in model save - prefix form nid: ", prefix)
-            # get database name
-            db_name = Databases.objects.get_data_by_prefix(prefix)
-            print("in model save - db_name form nid: ", db_name)
-            # save
-            #Product
-            if not self.db_for_write:
-                super().save(*args, **kwargs, using=str(db_name))
-            else:
-                super().save(*args, **kwargs, using=str(self.db_for_write))
-        else:
-            # create nid
-            self.nid = str(prefix)+ "-" + str(uuid.uuid4())[9:]
-            print("in model save - self.nid: ", self.nid)
-
-            # write to selected database 
-            if not self.db_for_write:
-                super().save(*args, **kwargs, using=str(db.get_name))
-                # update count
-                db.count = db.count + 1
-                db.save()
-            else:
-                super().save(*args, **kwargs, using=str(self.db_for_write))
-                
-    else:
-        if not self.db_for_write:
-            super().save(*args, **kwargs) 
-        else:
-            super().save(*args, **kwargs, using=str(self.db_for_write))
-
+############################### ShardedForeignKey ################################
 def get_lists(self):
     return self.product_id
 
+class CModelState(object):
+    """
+    A class for storing instance state
+    """
+    def __init__(self, db=None):
+        self.db = db
+        # If true, uniqueness validation checks will consider this a new, as-yet-unsaved object.
+        # Necessary for correct validation of new instances of objects with explicit (non-auto) PKs.
+        # This impacts validation only; it has no effect on the actual save.
+        self.adding = True
 
-def create_Sharded_many_to_many_intermediary_model(field, klass):
+def create_Sharded_many_to_many_intermediary_model(field, klass,  db=None):
     from django.db import models
 
     def set_managed(model, related, through):
@@ -201,20 +163,10 @@ def create_Sharded_many_to_many_intermediary_model(field, klass):
         'apps': field.model._meta.apps,
     })
 
-
-    if hasattr(klass, "_state") or hasattr(klass, "db"):
-        many_to_manyManager.data_name = klass._state.db or klass.db
-    else:
-        many_to_manyManager.data_name = None
-
-    print(from_, to)
-
     # Construct and return the new class.
     new_class = type(name, (models.Model,), {
-    #new_class = type(name, (ShardedModel,), {
         'Meta': meta,
         '__module__': klass.__module__,
-        #'nid': models.CharField(db_index=True, editable=False, max_length=36, unique=True, primary_key=True),
         from_: models.ForeignKey(
             klass,
             related_name='%s+' % name,
@@ -224,19 +176,19 @@ def create_Sharded_many_to_many_intermediary_model(field, klass):
         ),
         to: models.ForeignKey(
             to_model,
-            related_name='%s+' % name,
+            related_name= '%s+' % name,
             db_tablespace=field.db_tablespace,
             db_constraint=field.remote_field.db_constraint,
             on_delete=CASCADE,
         ),
         'objects':many_to_manyManager(),
-        'SHAREDED_MODEL':True,
         '__str__':get_lists,
-        #'save':many_to_many_save,
+        'using_db':db,
        
     })
-    #print("new_class", new_class)
     return new_class
+
+
 
 class ShardedManyToManyField(models.ManyToManyField):
 
@@ -260,21 +212,11 @@ class ShardedManyToManyField(models.ManyToManyField):
             else:
                 self.db_list_for_read = None 
 
-    def value_from_object(self, obj):
-        db_name = obj._state.db
-        remote_field = self.remote_model
-        remote_field_name = str(remote_field).split(".")
-        db_table        = str(self.model._meta.app_label.lower())+"_"+str(self.model._meta.verbose_name.lower())+"_"+str(remote_field_name[2])
-        where_colomn    = str(self.model._meta.verbose_name.lower()) + '_id'
-        fetech_colomn   = str(remote_field._meta.verbose_name.lower()) + '_id'
-        selected        = obj.__class__.objects.my_custom_sql(db_name, db_table, fetech_colomn, where_colomn, obj.nid)
-        return [nid[fetech_colomn] for nid in selected]
-        #return[] if obj.pk is None else list(getattr(obj, self.attname).all())
-
     def formfield(self, *, using=None, **kwargs):
         if not hasattr(self.model._meta,"ShardedManyToManyField"):
             self.model._meta.ShardedManyToManyField = []
-        self.model._meta.ShardedManyToManyField.append(self.remote_model) 
+        if self.remote_model not in self.model._meta.ShardedManyToManyField:
+            self.model._meta.ShardedManyToManyField.append(self.remote_model) 
 
         if self.db_list_for_read and self.db_list_for_read.count() != 0 and self.remote_model.SHAREDED_MODEL: 
                 queryset = reduce(QuerySetSequence, [self.remote_model._default_manager.raw_queryset().using(db.get_name) for db in self.db_list_for_read]) 
@@ -330,10 +272,11 @@ class ShardedManyToManyField(models.ManyToManyField):
                 def resolve_through_model(_, model, field):
                     field.remote_field.through = model
                 lazy_related_operation(resolve_through_model, cls, self.remote_field.through, field=self)
-            elif not cls._meta.swapped:
-                self.remote_field.through = create_Sharded_many_to_many_intermediary_model(self, cls)
+            elif not cls._meta.swapped: 
+                self.remote_field.through = create_Sharded_many_to_many_intermediary_model(self, cls, db=self.db_list_for_read.first().get_name)
 
         # Add the descriptor for the m2m relation.
+        #print(CustomManyToManyDescriptor(self.remote_field, reverse=False))
         setattr(cls, self.name, ManyToManyDescriptor(self.remote_field, reverse=False))
 
         # Set up the accessor for the m2m table name for the relation.

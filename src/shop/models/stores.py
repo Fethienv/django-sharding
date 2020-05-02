@@ -8,8 +8,6 @@ from .products import Product,NormalProductModel
 user = get_user_model() 
 
 
-
-
 class  NormalStoreModel(models.Model):
     stores = models.CharField(db_index=True,max_length=36)
     products = models.ManyToManyField(NormalProductModel, db_index=True, db_constraint=False)
@@ -29,7 +27,6 @@ class  Store(ShardedModel):
     slug  = models.SlugField(db_index=True, unique=True )
 
     products  = ShardedManyToManyField( to = Product, db_constraint=False )
-    #products = models.CharField(db_index=True, max_length=500) #ShardedForeignKey(ShardedManyToManyModel, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -37,8 +34,3 @@ class  Store(ShardedModel):
     class Meta:
         verbose_name = "Store"
 
-
-# class Store_lookupModel(ShardedModel):
-
-#     stores   = ShardedForeignKey(Store, on_delete=models.CASCADE)
-#     products = ShardedForeignKey(Product, on_delete=models.CASCADE)

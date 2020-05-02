@@ -118,7 +118,7 @@ class ShardedUser(AbstractBaseUser):
         SHAREDED_MODEL  = True
     else:
         SHAREDED_MODEL  = False
-    
+   
     def get_full_name(self):
         # The user is identified by their email address
         return self.first_name + ' ' + self.last_name
@@ -205,24 +205,18 @@ class ShardedUser(AbstractBaseUser):
             super(ShardedUser, self).save(*args, **kwargs)
 
 
-################# All Models ############################
+################# Fields customizations ############################
 
 class many_to_manyManager(models.Manager):
     def get_queryset(self):
-        if self.data_name:
-            qs = super(many_to_manyManager, self).get_queryset().using(self.data_name)#.filter(product_id=self.filtreds)
+        if self.model.using_db:
+            qs = super(many_to_manyManager, self).get_queryset().using(self.model.using_db)
         else:
             qs = super(many_to_manyManager, self).get_queryset()
-        #for qss in qs:
-           # print("qss: ", qss)  
-        print("many_to_manyManager qs:", qs)
         return qs
 
-def many_to_many_save(self, *args, **kwargs):
-    print("saved")
-    return super().save(*args, **kwargs).using(self.data_name)
 
-
+################# All Models ############################
 class ShardedModelManager(models.Manager):
 
     def raw_queryset(self, using = None):
@@ -232,70 +226,19 @@ class ShardedModelManager(models.Manager):
             return super(ShardedModelManager, self).get_queryset()
 
     def get_queryset(self):
-        #print("hi, this is: ", self.model)
         if self.model.SHAREDED_MODEL:
             try:
                 db_list = Databases.objects.all().filter(model_name=self.model._meta.model_name).exclude(count=0)
                 
                 if db_list.count() != 0:
                     #qs = MultiDBQuerySet(model=self.model, db_list=db_list)
-                    qs = reduce(QuerySetSequence, [super(ShardedModelManager, self).get_queryset().using(db.get_name) for db in db_list])  
-                    #qs.update(active=True)
-                    #qs.__class__.filter = self.first() # change qs methods
-                    return qs  
+                    return reduce(QuerySetSequence, [super(ShardedModelManager, self).get_queryset().using(db.get_name) for db in db_list]) 
 
                 return super(ShardedModelManager, self).get_queryset().none()
             except:
                 return super(ShardedModelManager, self).get_queryset() 
         else:
-            return super(ShardedModelManager, self).get_queryset() 
-
-    def my_custom_sql(self, db_name, db_table,fetech_colomn, where_colomn, where_equ):
-        from django.db import connections
-        with connections[db_name].cursor() as cursor:
-            cursor.execute("SELECT "+ fetech_colomn +" FROM "+ db_table +" WHERE "+ where_colomn +" = %s", [where_equ])
-            #row = cursor.fetchone()
-            row = self.dictfetchall(cursor)
-        
-        #return self.dictfetchall(connections[db_name].cursor())
-        return row
-
-    def dictfetchall(self, cursor):
-        "Return all rows from a cursor as a dict"
-        columns = [col[0] for col in cursor.description]
-        
-        return [
-            dict(zip(columns, row))
-            for row in cursor.fetchall()
-        ]
-
-    def first(self):
-        return "test"
-
-    def get(self, *args, **kwargs):
-        qs = self. get_queryset().get(*args, **kwargs)
-        db_name  = qs._state.db
-        #qs.products.data_name  = db_name
-        if hasattr(self.model._meta,"ShardedManyToManyField"):
-            for remote_field in self.model._meta.ShardedManyToManyField:
-                remote_field.__class__.data_name  = db_name
-                remote_field_name = str(remote_field).split(".")
-                db_table        = str(self.model._meta.app_label.lower())+"_"+str(self.model._meta.verbose_name.lower())+"_"+str(remote_field_name[2])
-                where_colomn    = str(self.model._meta.verbose_name.lower()) + '_id'
-                fetech_colomn   = str(remote_field._meta.verbose_name.lower()) + '_id'
-                results         = self.my_custom_sql(db_name, db_table, fetech_colomn, where_colomn, qs.nid)       
-                remote_field_qs = remote_field.objects.filter(pk__in=[col[fetech_colomn] for col in results])
-                attr = str(remote_field_name[-1].split("'>")[0])
-               
-                if hasattr(qs.__class__, remote_field_name[2]):
-                    delattr(qs.__class__, remote_field_name[2])
-                    setattr(qs.__class__,remote_field_name[2],remote_field_qs)
-                    setattr(qs,remote_field_name[2],remote_field_qs)
-        
-        return qs 
-
-        #return self. get_queryset().get(*args, **kwargs) #super(ShardedModelManager, self).get(self, *args, **kwargs) 
-
+            return super(ShardedModelManager, self).get_queryset()
 
 
 class ShardedModel(models.Model):
@@ -310,8 +253,10 @@ class ShardedModel(models.Model):
 
     class Meta:
         ordering = ['nid']
+        abstract = True
 
     def save(self, *args, **kwargs):
+
         if self.SHAREDED_MODEL:
             #print("in model save - self: ", self)
 

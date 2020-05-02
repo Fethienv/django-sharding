@@ -149,6 +149,33 @@ class  Product(ShardedModel):
 
 ```
 
+3. To use ManyToMany field you should import it from sharding.fields
+
+```
+from django.db import models
+
+from sharding.customizations import ShardedModel
+from sharding.fields import ShardedManyToManyField
+
+from .products import Product
+
+class  Store(ShardedModel):
+   
+    name  = models.CharField(db_index=True, max_length=120)
+    desc  = models.CharField(db_index=True, max_length=120)
+    slug  = models.SlugField(db_index=True, unique=True )
+
+    products  = ShardedManyToManyField( to = Product, db_constraint=False )
+
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        verbose_name = "Store"
+
+```
+
+
 ### Step 3:
 1. To sharding users, you must inherit ShardedUser, it will automaticly change the id by new id base on uuid3 and uuid4, then add AUTH_USER_MODEL = 'accounts.User' to settings.py
 
