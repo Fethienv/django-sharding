@@ -232,9 +232,11 @@ That's all
 
 
 ### TO DO:
-- Add more related Fileds
+- Add more related Fileds (OneToOneField, ...etc.)
+- multithreading for loops
+- add mange.py command to auto insert databases names in default database and dump fixtures (python manage.py load_shard_dbs) 
 - Add on_delete = CASCADE
-- more work on ManyToManyField
+- more work on ManyToManyField (add read and write databases, ... etc)
 
 ### Contribute:
 - Check for open issues or open a fresh issue to start a discussion around a feature idea or a bug.
