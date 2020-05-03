@@ -55,30 +55,6 @@ def select_read_db(model_name = None, is_sharded = True):
 
 
 
-################# ManyToManyDescriptor
-# from django.utils.functional import cached_property
-
-
-
-# class CustomManyToManyDescriptor(ManyToManyDescriptor): 
-
-
-#     def __init__(self, rel, reverse=False):
-#         super(CustomManyToManyDescriptor, self).__init__(rel, reverse)
-
-#     @cached_property
-#     def related_manager_cls(self):
-#         related_model = self.rel.related_model if self.reverse else self.rel.model
-
-#         #return create_forward_many_to_many_manager(
-#         forward = create_forward_many_to_many_manager(
-#             related_model._default_manager.__class__,
-#             self.rel,
-#             reverse=self.reverse,
-#             using_db= 'product_1'
-#         )
-#         print("related_model", related_model)
-#         return forward
 
 ###########################
 

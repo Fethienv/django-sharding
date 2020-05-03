@@ -16,6 +16,7 @@ from django.utils.translation import gettext_lazy as _
 from .querysetsequence import QuerySetSequence
 from .utils import db_list_for_read, select_read_db,select_write_db
 from .customizations import ShardedModel, many_to_manyManager
+from .related_descriptors import ShardReverseOneToOneDescriptor, ShardForwardOneToOneDescriptor
 
 from .models import Databases
 
@@ -24,7 +25,7 @@ class ShardedForeignKey(models.ForeignKey):
 
     def __init__(self, to, on_delete, related_name=None, related_query_name=None,
                  limit_choices_to=None, parent_link=False, to_field=None,
-                 db_constraint=True,db_for_read = None, **kwargs):
+                 db_constraint=False,db_for_read = None, **kwargs):
 
         self.db_for_read = db_for_read
         self.db_list_for_read = None
@@ -121,7 +122,7 @@ class ShardedForeignKey(models.ForeignKey):
 
 
 
-############################### ShardedForeignKey ################################
+############################### ShardedManyToMany ################################
 def get_lists(self):
     return self.product_id
 
@@ -273,7 +274,9 @@ class ShardedManyToManyField(models.ManyToManyField):
                     field.remote_field.through = model
                 lazy_related_operation(resolve_through_model, cls, self.remote_field.through, field=self)
             elif not cls._meta.swapped: 
-                self.remote_field.through = create_Sharded_many_to_many_intermediary_model(self, cls, db=self.db_list_for_read.first().get_name)
+                using_db = self.db_list_for_read.first().get_name if self.db_list_for_read else None
+
+                self.remote_field.through = create_Sharded_many_to_many_intermediary_model(self, cls, db=using_db)
 
         # Add the descriptor for the m2m relation.
         #print(CustomManyToManyDescriptor(self.remote_field, reverse=False))
@@ -281,6 +284,107 @@ class ShardedManyToManyField(models.ManyToManyField):
 
         # Set up the accessor for the m2m table name for the relation.
         self.m2m_db_table = partial(self._get_m2m_db_table, cls._meta)
+
+############################### OneToOneField ################################
+
+class ShardedOneToOneField(models.OneToOneField):
+
+    related_accessor_class = ShardReverseOneToOneDescriptor
+    forward_related_accessor_class = ShardForwardOneToOneDescriptor
+
+    def __init__(self, to, on_delete, to_field=None, db_for_read=None, **kwargs):
+
+        #kwargs['unique'] = True
+        self.db_for_read = db_for_read
+
+        super(ShardedOneToOneField, self).__init__(to, on_delete, to_field=to_field, **kwargs)
+
+        if not isinstance(to, str):
+            if self.remote_field.model.SHAREDED_MODEL:
+                self.db_list_for_read = db_list_for_read(model_name=str(self.remote_field.model._meta.verbose_name).lower())
+            else:
+                self.db_list_for_read = None
+
+    
+    def formfield(self, **kwargs):
+        if self.remote_field.parent_link:
+            return None
+        else:
+            if not hasattr(self.model._meta,"ShardedOneToOne"):
+                self.model._meta.ShardedOneToOne = []
+            
+            if self not in self.model._meta.ShardedOneToOne:
+            #self.model._meta.ShardedManyToManyField.append(self.remote_model) 
+                self.model._meta.ShardedOneToOne.append(self) 
+
+            if isinstance(self.remote_field.model, str):
+                raise ValueError("Cannot create form field for %r yet, because "
+                                "its related model %r has not been loaded yet" %
+                                (self.name, self.remote_field.model))
+
+            if self.db_list_for_read and self.db_list_for_read.count() != 0 and self.remote_field.model.SHAREDED_MODEL: 
+                    queryset = reduce(QuerySetSequence, [self.remote_field.model._default_manager.raw_queryset().using(db.get_name) for db in self.db_list_for_read]) 
+            else:
+                if self.db_for_read:
+                    using = self.db_for_read
+                else:
+                    using = using
+
+                queryset = self.remote_field.model._default_manager.using(using)
+
+            kwargs['queryset'] = queryset
+            field = super(models.ForeignKey,self).formfield(**{
+                'form_class': forms.ModelChoiceField,
+                'queryset': queryset,
+                'to_field_name': self.remote_field.field_name,
+                **kwargs,
+            })
+            return field
+
+    # def save_form_data(self, instance, data):
+
+    #     help(self)
+
+    #     print(" -------- save_form_data ------------- ",)
+    #     print("data",data)
+    #     print("instance",instance)
+        
+    #     pass
+
+    #     # if isinstance(data, self.remote_field.model):
+    #     #     #setattr(instance, self.name, data)
+    #     #     print (self.remote_field.model,instance, self.name, data)
+    #     # else:
+    #     #     #setattr(instance, self.attname, data)
+    #     #     print (self.remote_field.model, instance, self.name, data)
+    #     #     # Remote field object must be cleared otherwise Model.save()
+    #     #     # will reassign attname using the related object pk.
+    #     #     #if data is None:
+    #     #         #setattr(instance, self.name, data)
+    
+
+    # need to modify descreptor
+    # def contribute_to_related_class(self, cls, related):
+
+    #     if related.related_model._meta.verbose_name == "profile":
+    #         print("reverse related: ", related)
+    #         print("reverse related verbose_name: ", related.related_model._meta.verbose_name)
+    #         print("reverse cls: ", cls)
+    #         print("reverse cls._meta.concrete_model: ", cls._meta.concrete_model)
+    #         print("related.get_accessor_name: ", related.get_accessor_name())
+    #         print("related.get_accessor_name: ", self.related_accessor_class(related))
+       
+    #     # Internal FK's - i.e., those with a related name ending with '+' -
+    #     # and swapped models don't get a related descriptor.
+       
+    #     if not self.remote_field.is_hidden() and not related.related_model._meta.swapped:
+    #         setattr(cls._meta.concrete_model, related.get_accessor_name(), self.related_accessor_class(related))
+    #         # While 'limit_choices_to' might be a callable, simply pass
+    #         # it along for later - this is too early because it's still
+    #         # model load time.
+    #         if self.remote_field.limit_choices_to:
+    #             cls._meta.related_fkey_lookups.append(self.remote_field.limit_choices_to)
+
 
 
 #Class on_delete

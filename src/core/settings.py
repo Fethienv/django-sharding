@@ -131,6 +131,18 @@ DATABASES = {
         'USER': 'sqlite3_shop',
         'PASSWORD': 'veryPriv@ate'
     },
+    'profile_1': { # range 101-200
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'profile_1-primary.sqlite3'),
+        'USER': 'sqlite3_shop',
+        'PASSWORD': 'veryPriv@ate'
+    },
+    'profile_2': { # range 101-200
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'profile_2-primary.sqlite3'),
+        'USER': 'sqlite3_shop',
+        'PASSWORD': 'veryPriv@ate'
+    },
 }
 
 DATABASE_MAX_ROWS = 100

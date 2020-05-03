@@ -841,6 +841,7 @@ class QuerySetSequence(ComparatorMixin):
     def delete(self):
         deleted_count = 0
         deleted_objects = defaultdict(int)
+
         for qs in self._querysets:
             # Delete this QuerySet.
             current_deleted_count, current_deleted_objects = qs.delete()

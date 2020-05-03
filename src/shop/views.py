@@ -12,16 +12,20 @@ import uuid
 
 from django.db.models.query import EmptyQuerySet, QuerySet
 
+from django.contrib import auth
+
+User = auth.get_user_model()
+
 class HomePageView(View):
 
     def get(self, request, *args, **kwargs):
 
 
         # Sharding tests
-        ProductsA = Product.objects.filter(name="car")
-        ProductsB = Product.objects.filter(name="car")
+        # ProductsA = Product.objects.filter(name="car")
+        # ProductsB = Product.objects.filter(name="car")
 
-        print(ProductsA & ProductsB )
+        # print(ProductsA & ProductsB )
         
 
         context = {'Products': 'Products',
@@ -30,35 +34,32 @@ class HomePageView(View):
         content_type = ''#'application/xhtml+xml'
     
         # MultiDBQuerySet tests
-        Products1 = MultiDBQuerySet(model = Product).filter(name="car")
-        Products2 = MultiDBQuerySet(model = Product).filter(name="car")
+        # Products1 = MultiDBQuerySet(model = Product).filter(name="car")
+        # Products2 = MultiDBQuerySet(model = Product).filter(name="car")
 
 
-        print(Products1 & Products2 )
+        # print(Products1 & Products2 )
 
-        print("----------- NormalStore")
-        store = NormalStoreModel.objects.first()
+        # # manyToMany tests 
+        # print("----------- manyToMany tests ")
+        # stores = Store.objects.filter(name="jawlatte")#.using(s)
+        # #print("stores",stores.products) # limited need more work because it still return none
 
-        
-
-        print ("first: ", store.products.first())
-
-        #print("product", NormalStoreModel.products)
-
-        # for p in NormalStoreModel.products:
-        #     print(p.nid)
+        # store = Store.objects.get(name="jawlatte") # get work well
+        # print("product test", store.products.all())
 
 
-        # manyToMany tests 
-        print("----------- stores")
-        stores = Store.objects.filter(name="jawlatte")#.using(s)
-        #print("stores",stores.products) # limited need more work because it still return none
+        # OneToOne tests 
+        print("----------- OneToOne tests")
+        user = User.objects.get(email="tested@test.com")
+        print("user", user.nid)
+        print("user profile: ", user.profile)
 
-        print("----------- store")
-        store = Store.objects.get(name="jawlatte") # get work well
-        print("product test", store.products.all())
-
-
+        # problems
+        # 1. to set profile must user exist in profile db
+        # 2. to get profile must profile exist in default
+        # To do during set must read user from user table, and during get must read profile from profile table
+        # 
         
 
         return render(request, 'shop/index.html', context, content_type)

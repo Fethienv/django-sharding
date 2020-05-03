@@ -187,10 +187,10 @@ class ShardedUser(AbstractBaseUser):
                 self.nid = str(prefix)+ "-" + str(uuid.uuid4())[9:]
                 # write to selected database 
                 
-                if kwargs["using"]:
+                if 'using' in kwargs:
                     super(ShardedUser, self).save(*args, **kwargs)
                 else:
-                    super(ShardedUser, self).save(*args, **kwargs, using=db.get_name)
+                    super(ShardedUser, self).save(*args, **kwargs, using=str(db.get_name))
 
                 # to delete after sharding permissions table
                 # because permissions table are in default
@@ -199,6 +199,7 @@ class ShardedUser(AbstractBaseUser):
                     super(ShardedUser, self).save(*args, **kwargs)#, using='default')
 
                 # update count
+                print("add count")
                 db.count = db.count + 1
                 db.save()
         else:
@@ -281,9 +282,15 @@ class ShardedModel(models.Model):
                 # save
                 #Product
                 if not self.db_for_write:
-                    super(ShardedModel, self).save(*args, **kwargs, using=str(db_name))
+                    if 'using' in kwargs:
+                        super(ShardedModel, self).save(*args, **kwargs)
+                    else:
+                        super(ShardedModel, self).save(*args, **kwargs, using=str(db_name))
                 else:
-                    super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
+                    if 'using' in kwargs:
+                        super(ShardedModel, self).save(*args, **kwargs)
+                    else:
+                        super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
             else:
                 # create nid
                 self.nid = str(prefix)+ "-" + str(uuid.uuid4())[9:]
@@ -291,18 +298,28 @@ class ShardedModel(models.Model):
 
                 # write to selected database 
                 if not self.db_for_write:
-                    super(ShardedModel, self).save(*args, **kwargs, using=str(db.get_name))
+                    if 'using' in kwargs:
+                        super(ShardedModel, self).save(*args, **kwargs)
+                    else:
+                        super(ShardedModel, self).save(*args, **kwargs, using=str(db.get_name))
                     # update count
                     db.count = db.count + 1
                     db.save()
                 else:
-                    super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
+                    if 'using' in kwargs:
+                        super(ShardedModel, self).save(*args, **kwargs)
+                    else:
+                        super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
                 
         else:
             if not self.db_for_write:
                 super(ShardedModel, self).save(*args, **kwargs) 
             else:
-                super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
+                if 'using' in kwargs:
+                    super(ShardedModel, self).save(*args, **kwargs)
+                else:
+                    super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
+
             
 
     # save m2m solutions
