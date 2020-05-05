@@ -51,7 +51,7 @@ class HomePageView(View):
 
         # OneToOne tests 
         print("----------- OneToOne tests")
-        user = User.objects.get(email="tested@test.com")
+        user = User.objects.get(email="testing@test.com")
         print("user", user.nid)
         print("user profile: ", user.profile)
 
