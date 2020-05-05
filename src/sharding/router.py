@@ -33,13 +33,19 @@ class ShardingRouter:
         Writes always go to primary.
         """
         #if model._meta.app_label in self.route_app_labels:
-        if hasattr(model, "using_db"):
+        if hasattr(model, "using_db") and model.using_db is not None:
+
             return  model.using_db
+        
+        if hasattr(model, "db_for_write") and model.db_for_write is not None:
+            print("router hasattr: ", model, model.db_for_write)
+            return  model.db_for_write
 
         model_name    = str(model._meta.model_name).split("_")[0]
 
         try:
             db = select_write_db(model_name = model_name)
+            print("roouter select_write_db: ",model, str(db))
             return str(db)
         except:
             return  'default'

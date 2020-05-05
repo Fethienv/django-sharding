@@ -296,6 +296,7 @@ class ShardedOneToOneField(models.OneToOneField):
 
         #kwargs['unique'] = True
         self.db_for_read = db_for_read
+        self.on_delete = on_delete
 
         super(ShardedOneToOneField, self).__init__(to, on_delete, to_field=to_field, **kwargs)
 
@@ -315,7 +316,15 @@ class ShardedOneToOneField(models.OneToOneField):
             
             if self not in self.model._meta.ShardedOneToOne:
             #self.model._meta.ShardedManyToManyField.append(self.remote_model) 
+                
                 self.model._meta.ShardedOneToOne.append(self) 
+
+            if self not in self.remote_field.model.related_models:
+                self.remote_field.model.related_models.append(self.model)
+                self.remote_field.model.on_delete[self.model._meta.model_name] = self.on_delete
+
+            if self not in self.model.forward_models:
+                self.model.forward_models.append(self.remote_field.model)
 
             if isinstance(self.remote_field.model, str):
                 raise ValueError("Cannot create form field for %r yet, because "
@@ -340,6 +349,57 @@ class ShardedOneToOneField(models.OneToOneField):
                 **kwargs,
             })
             return field
+    
+    def validate(self, value, model_instance):
+        # To do: validate froward
+        if self.remote_field.parent_link:
+            return
+        super(models.ForeignKey,self).validate(value, model_instance)
+
+        if value is None:
+            return
+
+        if self.db_list_for_read:
+            state = {}
+            i = 0
+            for db in self.db_list_for_read:
+                i += 1
+                using = db.get_name
+                qs = self.remote_field.model._default_manager.using(using).filter(**{self.remote_field.field_name: value})
+                qs = qs.complex_filter(self.get_limit_choices_to())
+                if not qs.exists():
+                    state[i] = False
+                else:
+                    state[i] = True
+
+            if not True in state.values():
+               raise exceptions.ValidationError(
+                    self.error_messages['invalid'],
+                    code='invalid',
+                    params={
+                        'model': self.remote_field.model._meta.verbose_name, 'pk': value,
+                        'field': self.remote_field.field_name, 'value': value,
+                    },      # 'pk' is included for backwards compatibility
+                ) 
+        else:
+            if self.db_for_read:
+                using = self.db_for_read
+            else:
+                using = router.db_for_read(self.remote_field.model, instance=model_instance)
+
+            qs = self.remote_field.model._default_manager.using(using).filter(
+                **{self.remote_field.field_name: value}
+            )
+            qs = qs.complex_filter(self.get_limit_choices_to())
+            if not qs.exists():
+                raise exceptions.ValidationError(
+                    self.error_messages['invalid'],
+                    code='invalid',
+                    params={
+                        'model': self.remote_field.model._meta.verbose_name, 'pk': value,
+                        'field': self.remote_field.field_name, 'value': value,
+                    },      # 'pk' is included for backwards compatibility
+                )
 
     # def save_form_data(self, instance, data):
 

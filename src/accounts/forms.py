@@ -1,5 +1,5 @@
 from django import forms
-from sharding.forms import ShardedUserRegisterForm, ShardedUserAdminCreationForm, ShardedUserAdminChangeForm
+from sharding.forms import ShardedUserRegisterForm, ShardedUserAdminCreationForm, ShardedUserAdminChangeForm, ShardedModelForm
 from .models import User
 from .models import Profile
 

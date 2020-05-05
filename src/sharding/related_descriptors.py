@@ -6,19 +6,29 @@ from django.db.models.fields.related_descriptors import (
 )
 from django.contrib.contenttypes.models import ContentType
 
+
 class ShardForwardOneToOneDescriptor(ForwardOneToOneDescriptor):
 
     def get_queryset(self, **hints):
         #return self.field.remote_field.model._base_manager.db_manager(hints=hints).all()
         return self.field.remote_field.model.objects.db_manager(hints=hints).all()
 
+
     def __set__(self, instance, value):
         super(ShardForwardOneToOneDescriptor, self).__set__(instance, value)
         # save the same value instance on the same field then delete after
+        ct_model = ContentType.objects.get(model=value.__class__._meta.verbose_name).model_class()
+        ct_model.db_for_write = instance._state.db
+        ct_model_obj = ct_model.objects.filter(pk=value.pk)
+        ct_model.db_for_write = None
+
         try:
-            value.save(using=instance._state.db) 
+            if ct_model_obj.count() == 0:
+                value.save(using=instance._state.db) 
+            else:
+                pass
         except:
-            print("Descriptor, user exist")
+            pass
         
 
 
