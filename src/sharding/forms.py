@@ -58,7 +58,7 @@ class ShardedUserRegisterForm(forms.ModelForm):
             raise forms.ValidationError("Passwords don't match")
         return password2
 
-class ShardedUserAdminCreationForm(ShardedModelForm):
+class ShardedUserAdminCreationForm(forms.ModelForm):
     """
     A form for creating new users. Includes all the required
     fields, plus a repeated password.

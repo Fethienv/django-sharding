@@ -307,24 +307,46 @@ class ShardedOneToOneField(models.OneToOneField):
                 self.db_list_for_read = None
 
     
-    def formfield(self, **kwargs):
+    def formfield(self, *, using=None, **kwargs):
+
+        """
+                related_models and forward_models for delete and save
+
+                exemple:
+                                    class SomeModel(ShardedModel):         
+                related_field   --->    user     = ShardedOneToOneField(User, on_delete=models.CASCADE, unique=False) 
+                                        location = models.CharField(max_length=30, blank=True)
+                related_model   --->    SomeModel
+                forward_model   --->    User
+
+        """
+
+
         if self.remote_field.parent_link:
             return None
         else:
             if not hasattr(self.model._meta,"ShardedOneToOne"):
                 self.model._meta.ShardedOneToOne = []
             
-            if self not in self.model._meta.ShardedOneToOne:
-            #self.model._meta.ShardedManyToManyField.append(self.remote_model) 
-                
-                self.model._meta.ShardedOneToOne.append(self) 
+            if self.remote_field not in self.model._meta.ShardedOneToOne:
+                self.model._meta.ShardedOneToOne.append(self.remote_field) 
 
+
+
+            # related_models and forward_models for delete and save
+            # TODO: init this with first migrations
             if self not in self.remote_field.model.related_models:
+                for field in self.model._meta.get_fields():
+                    if field.related_model and field.model == self.remote_field.related_model:
+                        self.remote_field.model.related_fields[self.model._meta.model_name] = field.name
                 self.remote_field.model.related_models.append(self.model)
                 self.remote_field.model.on_delete[self.model._meta.model_name] = self.on_delete
 
-            if self not in self.model.forward_models:
+            if self.remote_field.model not in self.model.forward_models:
                 self.model.forward_models.append(self.remote_field.model)
+                for field in self.model._meta.get_fields():
+                    if field.related_model and field.model == self.model:
+                        self.model.forward_fields[self.remote_field.model._meta.model_name] = field.name
 
             if isinstance(self.remote_field.model, str):
                 raise ValueError("Cannot create form field for %r yet, because "
@@ -349,9 +371,11 @@ class ShardedOneToOneField(models.OneToOneField):
                 **kwargs,
             })
             return field
+
     
+   
     def validate(self, value, model_instance):
-        # To do: validate froward
+        # TODO: validate froward
         if self.remote_field.parent_link:
             return
         super(models.ForeignKey,self).validate(value, model_instance)
@@ -400,51 +424,5 @@ class ShardedOneToOneField(models.OneToOneField):
                         'field': self.remote_field.field_name, 'value': value,
                     },      # 'pk' is included for backwards compatibility
                 )
-
-    # def save_form_data(self, instance, data):
-
-    #     help(self)
-
-    #     print(" -------- save_form_data ------------- ",)
-    #     print("data",data)
-    #     print("instance",instance)
-        
-    #     pass
-
-    #     # if isinstance(data, self.remote_field.model):
-    #     #     #setattr(instance, self.name, data)
-    #     #     print (self.remote_field.model,instance, self.name, data)
-    #     # else:
-    #     #     #setattr(instance, self.attname, data)
-    #     #     print (self.remote_field.model, instance, self.name, data)
-    #     #     # Remote field object must be cleared otherwise Model.save()
-    #     #     # will reassign attname using the related object pk.
-    #     #     #if data is None:
-    #     #         #setattr(instance, self.name, data)
-    
-
-    # need to modify descreptor
-    # def contribute_to_related_class(self, cls, related):
-
-    #     if related.related_model._meta.verbose_name == "profile":
-    #         print("reverse related: ", related)
-    #         print("reverse related verbose_name: ", related.related_model._meta.verbose_name)
-    #         print("reverse cls: ", cls)
-    #         print("reverse cls._meta.concrete_model: ", cls._meta.concrete_model)
-    #         print("related.get_accessor_name: ", related.get_accessor_name())
-    #         print("related.get_accessor_name: ", self.related_accessor_class(related))
-       
-    #     # Internal FK's - i.e., those with a related name ending with '+' -
-    #     # and swapped models don't get a related descriptor.
-       
-    #     if not self.remote_field.is_hidden() and not related.related_model._meta.swapped:
-    #         setattr(cls._meta.concrete_model, related.get_accessor_name(), self.related_accessor_class(related))
-    #         # While 'limit_choices_to' might be a callable, simply pass
-    #         # it along for later - this is too early because it's still
-    #         # model load time.
-    #         if self.remote_field.limit_choices_to:
-    #             cls._meta.related_fkey_lookups.append(self.remote_field.limit_choices_to)
-
-
-
+   
 #Class on_delete

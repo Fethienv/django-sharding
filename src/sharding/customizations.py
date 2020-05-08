@@ -15,43 +15,98 @@ from .multidbquery import MultiDBQuerySet
 from .models import Databases
 from .utils import select_write_db
 from django.db.models.deletion import Collector
+from django.contrib.contenttypes.models import ContentType
 
 
 class ShardUserModelQueryset(models.QuerySet):
 
     def delete(self):
-        print("deleting ...")
+        print("deleting ...") # debug
         count = self.count()
-        if self.model.related_models is not None and count == 1:
-            print("get instance ...")
-            instance = self.first()
-        #cascade_delete(User)
-        super(ShardUserModelQueryset,self).delete()
+        for instance in self:
+            
+            print("get instance ...") # debug
+            print(instance)
+            instance_db = instance._state.db
+            self_pk = instance.pk
+            db = Databases.objects.get_data_by_full_name(instance._state.db)
+            db.count = db.count - 1
+            db.save()
 
-        if self.model.related_models is not None and count == 1:
-            print("get query set ...")
-            for related_model in self.model.related_models:
+            if instance.__class__.forward_models is not None:
+                print("forward_fields", instance.__class__.forward_fields) # debug
+                print("forward_models", instance.__class__.forward_models) # debug
+                frd_pks = {}
+                for forward_model in instance.__class__.forward_models:
+                    attrname = instance.__class__.forward_fields[forward_model._meta.model_name]
+                    frd_pks[getattr(instance, attrname + '_id')] = forward_model
 
-                db_list = Databases.objects.all().filter(model_name=related_model._meta.model_name).exclude(count=0)  
-                if db_list.count() != 0:
-                    for db in db_list:
-                        try: 
-                            # on delete cascad
-                            if self.model.on_delete[related_model._meta.model_name].__name__ == "CASCADE":
-                                # 1- delete related:
-                                qs1 = related_model.objects.get(user=instance) #models.QuerySet(related_model, using=str(db)).filter(pk= str(instance.pk))
-                                qs1.delete()
+            # 1- delete instance from its used database
+            super(ShardUserModelQueryset,self).delete()
 
-                                # 2- delete the same instance from related database 
-                                  
-                                qs = models.QuerySet(self.model, using=str(db)).filter(pk= instance.pk)
+            # 2- same instance from related database:
+            # forward_model ---> this instance
+            if instance.__class__.forward_models is not None:
+                for frd_pk in frd_pks:
+     
+                    forward_model = frd_pks[frd_pk]
 
-                                collector = Collector(using=qs.db)
-                                collector.collect(qs)
-                                deleted, _rows_count = collector.delete()
+                    print("forward model:", frd_pk, forward_model) # debug
 
-                        except self.model.DoesNotExist:
-                            continue
+                    ct_model = ContentType.objects.get(model=forward_model._meta.model_name).model_class()
+                    ct_model_obj = ct_model.objects.filter(pk= frd_pk)
+
+                    print("forward obj:", ct_model_obj) # debug
+
+                    # do not delete forward_model instance if exist in its specific database
+                    
+                    if ct_model_obj.count() == 0:
+                        qs = models.QuerySet(forward_model, using=str(instance_db)).filter(pk= frd_pk)
+                        print(qs)           
+                        collector = Collector(using=instance_db)
+                        collector.collect(qs)
+                        deleted, _rows_count = collector.delete()
+
+            # 3- delete related model instance
+            # related_model   --->    instance related to this model
+            if instance.__class__.related_models is not None:
+                print("get query set ...") # debug
+
+                print("related models", instance.__class__.related_models) # debug
+                
+
+                for related_model in instance.related_models:
+                    print("related fields", instance.related_fields[related_model._meta.model_name]) # debug
+
+                    # get related database
+                    db_list = Databases.objects.all().filter(model_name=related_model._meta.model_name).exclude(count=0)  
+                    # if exist
+                    if db_list.count() != 0:
+                        for db in db_list:
+                            #try: 
+
+                                filters = {}
+                                filters[instance.related_fields[related_model._meta.model_name]] = instance
+
+                                qs1 = models.QuerySet(related_model, using=str(db)).filter(**filters)
+
+                                # on delete cascad delete related instances
+                                if self.model.on_delete[related_model._meta.model_name].__name__ == "CASCADE":
+
+                                    collector = Collector(using=qs1.db)
+                                    collector.collect(qs1)
+                                    deleted, _rows_count = collector.delete()
+
+                                if qs1.count() == 0:
+                                    # if related instance dosn't exist
+                                    # delete this model instance in other model databases 
+                                    print("self_pk ", self_pk)
+                                    qs2 = models.QuerySet(self.model, using=str(qs1.db)).filter(pk= self_pk)
+                                    print('qs2', qs2)           
+                                    collector = Collector(using=qs1.db)
+                                    collector.collect(qs2)
+                                    deleted, _rows_count = collector.delete()
+
 
  
 ################# User model ############################
@@ -87,16 +142,7 @@ class  ShardedUserManager(BaseUserManager):
         user.admin = is_superuser
 
         if settings.SHARDING_USER_MODEL:
-            #try:
-                # to delete after sharding permissions table
-                # because permissions table are in default
-            if is_staff and is_superuser:
-                #kwargs['using'] ='default'
-                user.save(using='default')
-
             user.save(using=str(db.get_name))
-            #except:
-                #raise Error(f"No database for {self.model._meta.model_name} Model, please add it from admin")
             db.count = db.count + 1
             db.save()
         else:
@@ -114,23 +160,6 @@ class  ShardedUserManager(BaseUserManager):
         Creates and saves a superuser with the given email and password.
         """
         return self.create_user(username, email, password, is_staff = True, is_superuser= True) 
-
-    # def get_queryset(self):
-    #     if settings.SHARDING_USER_MODEL:
-    #         if not self.model.db_for_write: # after, to change to db_for_read
-    #             try:
-    #                 db_list = Databases.objects.all().filter(model_name=self.model._meta.model_name).exclude(count=0)
-                
-    #                 if db_list.count() != 0:
-    #                     #return MultiDBQuerySet(model=self.model, db_list=db_list)
-    #                     return reduce(QuerySetSequence, [super(ShardedUserManager, self).get_queryset().using(db.get_name) for db in db_list])        
-    #                 return super(ShardedUserManager, self).get_queryset().none()
-    #             except:
-    #                 return super(ShardedUserManager, self).get_queryset() 
-    #         else:
-    #             return super(ShardedUserManager, self).get_queryset().using(self.model.db_for_write)
-    #     else:
-    #         return super(ShardedUserManager, self).get_queryset()
 
     def get_queryset(self):
         if self.model.SHAREDED_MODEL:
@@ -157,10 +186,6 @@ class  ShardedUserManager(BaseUserManager):
         else:
             return ShardUserModelQueryset(self.model, using=self._db)
 
-    # def delete(self):
-    #     print("related_dbs")
-    #     return self.get_queryset().delete()
-
 
 class ShardedUser(AbstractBaseUser):
     nid      = models.CharField(db_index=True, editable=False, max_length=36, unique=True, primary_key=True)
@@ -184,16 +209,18 @@ class ShardedUser(AbstractBaseUser):
         SHAREDED_MODEL  = True
     else:
         SHAREDED_MODEL  = False
+    
+    class Meta:
+        ordering = ['date_joined']
+        abstract = True
 
     db_for_write    = None
     db_for_read     = None # not completed
     related_models  = [] # list of related data name
     forward_models  = []
     on_delete       = {}
-
-    # def delete(self, using=None,keep_parents=False):
-    #     print("testing")
-    #     super(ShardedUser, self).delete(using=using, keep_parents=keep_parents)
+    related_fields  = {}
+    forward_fields  = {}
    
     def get_full_name(self):
         # The user is identified by their email address
@@ -243,24 +270,31 @@ class ShardedUser(AbstractBaseUser):
             print("save user", 'saving ...')
  
         if settings.SHARDING_USER_MODEL:
-            
+
+            print("check if nid exist")
+            print(self.nid)
             if self.nid:
+                print("nid exist")
                 # get prefix
                 prefix = str(self.nid)[:8]
                 # get database name
                 db_name = Databases.objects.get_data_by_prefix(prefix)
                 # save
                 if "using" in kwargs:
+                    print("save user", '2- saving kwargs using ' + kwargs['using'] + ' ...') 
                     super(AbstractBaseUser, self).save(*args, **kwargs)
                 else:
+                    print("save user", '2- saving db_name using ' + str(db_name) + ' ...') 
                     super(AbstractBaseUser, self).save(*args, **kwargs, using=str(db_name))
 
                 # to delete after sharding permissions table
                 # because permissions table are in default
                 if self.is_admin and self.is_staff:
+                    
                     kwargs['using'] ='default'
                     super(AbstractBaseUser, self).save(*args, **kwargs)
             else:
+                print("nid not exist")
                 # select database name
                 db = select_write_db(model_name=self._meta.model_name)
 
@@ -270,23 +304,37 @@ class ShardedUser(AbstractBaseUser):
                 self.nid = str(prefix)+ "-" + str(uuid.uuid4())[9:]
 
                 # write to selected database 
-                #if 'using' in kwargs:
+                print("save user", '2- saving using AbstractBaseUser') 
+
                 super(AbstractBaseUser, self).save(*args, **kwargs)
-                #else:
-                    #super(ShardedUser, self).save(*args, **kwargs, using=str(db.get_name))
+
 
                 # to delete after sharding permissions table
                 # because permissions table are in default
                 if self.is_admin and self.is_staff:
                     kwargs['using'] ='default'
                     super(AbstractBaseUser, self).save(*args, **kwargs)#, using='default')
+                                #except:
+                                    #pass 
 
                 # update count
                 print("add count")
                 db.count = db.count + 1
                 db.save()
+
+            if self.related_models is not None:
+                for related_model in self.related_models:
+                    # get related database
+                    db_list = Databases.objects.all().filter(model_name=related_model._meta.model_name).exclude(count=0)  
+                    # if exist
+                    if db_list.count() != 0:
+                        for db in db_list:
+                            #try:
+                            kwargs['using'] = str(db)
+                            super(AbstractBaseUser, self).save(*args, **kwargs)
         else:
             super(AbstractBaseUser, self).save(*args, **kwargs)
+        
 
 
 ################# Fields customizations ############################
@@ -304,59 +352,108 @@ class many_to_manyManager(models.Manager):
 ################# All Models ############################
 
 class ShardModelQueryset(models.QuerySet):
+
+   
     def delete(self):
         print("deleting ...")
         count = self.count()
-        if count == 1:
-            print("get instance ...")
-            instance = self.first()
-        #cascade_delete(User)
-        if self.model.forward_models is not None and count == 1:
-            frd_pks = {}
-            for forward_model in self.model.forward_models:
-                frd_pks[getattr(self.first(), forward_model._meta.model_name + '_id')] = forward_model
+        for instance in self:
 
-        super(ShardModelQueryset,self).delete()
+            print("get instance ...") #debug
+            print(instance) #debug
+            db = Databases.objects.get_data_by_full_name(instance._state.db)
+            instance_db = instance._state.db
+            self_pk  = instance.pk
+            db.count = db.count - 1
+            db.save()
+        
+            if instance.__class__.forward_models is not None:
+                print("forward_fields", instance.__class__.forward_fields) # debug
+                print("forward_models", instance.__class__.forward_models) # debug
+                frd_pks = {}
+                for forward_model in instance.__class__.forward_models:
+                    attrname = instance.__class__.forward_fields[forward_model._meta.model_name]
+                    frd_pks[getattr(instance, attrname + '_id')] = forward_model
 
-        if self.model.forward_models is not None and count == 1:
-            for frd_pk in frd_pks:
+
+            # 1- delete instance from its used database
+            super(ShardModelQueryset,self).delete()
+
+            # 2- same instance from related database:
+            if instance.__class__.forward_models is not None:
+                for frd_pk in frd_pks:
      
-                forward_model = frd_pks[frd_pk]
-                print(frd_pk, forward_model)
-                qs = models.QuerySet(forward_model, using=str(self.db)).filter(pk= frd_pk)
-                print(qs)
+                    forward_model = frd_pks[frd_pk]
+                    print(frd_pk, forward_model)
 
-                collector = Collector(using=self.db)
-                collector.collect(qs)
-                deleted, _rows_count = collector.delete()
+                    ct_model = ContentType.objects.get(model=forward_model._meta.model_name).model_class()
+                    ct_model_obj = ct_model.objects.filter(pk= frd_pk)
+
+                    print(ct_model_obj)
+
+                    # do not delete forward_model instance if exist in his specific database
+                    if ct_model_obj.count() == 0:
+                        qs = models.QuerySet(forward_model, using=str(instance_db)).filter(pk= frd_pk)
+                        print(qs)           
+                        collector = Collector(using=instance_db)
+                        collector.collect(qs)
+                        deleted, _rows_count = collector.delete()
+
+            # 3- delete related model instance from its database:
+            # related_models: mean models where use this model in
+            # this mean when delete this model instance will delete 
+            # also in other model databases
+            if instance.__class__.related_models is not None:
+                print("get query set ...")
+                print(instance.__class__.related_models)
+                for related_model in instance.related_models:
+                
+                    print(instance.related_fields)    
+                    db_list = Databases.objects.all().filter(model_name=related_model._meta.model_name).exclude(count=0)  
+                    if db_list.count() != 0:
+                        for db in db_list:
+                            try: 
+                                # on delete cascad
+                                # if self.model.on_delete[related_model._meta.model_name].__name__ == "CASCADE":
+                                #     filters = {}
+                                #     # TODO: Change key dynamicly 
+                                #     filters["owner"] = instance
+
+                                #     qs1 = models.QuerySet(related_model, using=str(db)).filter(**filters)
+
+                                #     collector = Collector(using=qs1.db)
+                                #     collector.collect(qs1)
+                                #     deleted, _rows_count = collector.delete()
+
+                                filters = {}
+
+                                filters[instance.related_fields[related_model._meta.model_name]] = instance
+
+                                qs1 = models.QuerySet(related_model, using=str(db)).filter(**filters)
+
+                                # on delete cascad delete related instances
+                                if self.model.on_delete[related_model._meta.model_name].__name__ == "CASCADE":
+
+                                    collector = Collector(using=qs1.db)
+                                    collector.collect(qs1)
+                                    deleted, _rows_count = collector.delete()
+
+                                if qs1.count() == 0:
+                                    # if related instance dosn't exist
+                                    # delete this model instance in other model databases 
+                                    print("self_pk ", self_pk)
+                                    qs2 = models.QuerySet(self.model, using=str(qs1.db)).filter(pk= self_pk)
+                                    print('qs2', qs2)           
+                                    collector = Collector(using=qs1.db)
+                                    collector.collect(qs2)
+                                    deleted, _rows_count = collector.delete()
 
 
-        if self.model.related_models is not None and count == 1:
-            print("get query set ...")
-            for related_model in self.model.related_models:
-
-                db_list = Databases.objects.all().filter(model_name=related_model._meta.model_name).exclude(count=0)  
-                if db_list.count() != 0:
-                    for db in db_list:
-                        try: 
-                            # on delete cascad
-                            if self.model.on_delete[related_model._meta.model_name].__name__ == "CASCADE":
-                                # 1- delete related:
-                                qs1 = related_model.objects.get(user=instance) #models.QuerySet(related_model, using=str(db)).filter(pk= str(instance.pk))
-                                qs1.delete()
-
-                                # 2- delete the same instance from related database 
-                                  
-                                qs = models.QuerySet(self.model, using=str(db)).filter(pk= instance.pk)
-
-                                collector = Collector(using=qs.db)
-                                collector.collect(qs)
-                                deleted, _rows_count = collector.delete()
-
-                        except self.model.DoesNotExist:
-                            continue
+                            except instance.DoesNotExist:
+                                continue
 
     def create(self,**kwargs):
+  
         # use try/except to avoid re-create
         try:
             super(ShardModelQueryset,self).create(**kwargs)
@@ -371,24 +468,6 @@ class ShardedModelManager(models.Manager):
             return ShardModelQueryset(self.model, using=using)
         else:
             return ShardModelQueryset(self.model, using=self._db)
-
-    # def get_queryset(self):
-    #     if self.model.SHAREDED_MODEL:
-    #         if not self.model.db_for_write: # after, to change to db_for_read
-    #             try:
-    #                 db_list = Databases.objects.all().filter(model_name=self.model._meta.model_name).exclude(count=0)
-                
-    #                 if db_list.count() != 0:
-    #                     #qs = MultiDBQuerySet(model=self.model, db_list=db_list)
-    #                     return reduce(QuerySetSequence, [super(ShardedModelManager, self).get_queryset().using(db.get_name) for db in db_list]) 
-
-    #                 return super(ShardedModelManager, self).get_queryset().none()
-    #             except:
-    #                 return super(ShardedModelManager, self).get_queryset() 
-    #         else:
-    #             return super(ShardedModelManager, self).get_queryset().using(self.model.db_for_write)
-    #     else:
-    #         return super(ShardedModelManager, self).get_queryset()
 
     def get_queryset(self):
         if self.model.SHAREDED_MODEL:
@@ -419,6 +498,8 @@ class ShardedModel(models.Model):
     related_models  = [] # list of related model
     forward_models  = []
     on_delete       = {} # on delete action
+    related_fields  = {}
+    forward_fields  = {}
 
     objects = ShardedModelManager()
 
@@ -426,87 +507,71 @@ class ShardedModel(models.Model):
         ordering = ['nid']
         abstract = True
 
-
-    # def delete(self, using=None,keep_parents=False):
-    #     super(ShardedModel, self).save(*args, **kwargs, using=using)
-    
-
     def save(self, *args, **kwargs):
 
         
         if 'using' in kwargs:
-            print("save model", 'saving using ' + kwargs['using'] + ' ...') 
+            print("save model", 'saving using ' + kwargs['using'] + ' ...')# for debug 
         else:
-            print("save model", 'saving ...')
+            print("save model", 'saving ...')# for debug
 
         if self.SHAREDED_MODEL:
-            #print("in model save - self: ", self)
+            #print("in model save - self: ", self)# for debug
 
-            #print("in model save - args: ", args)
-            #print("in model save - kwargs: ", kwargs)
+            #print("in model save - args: ", args)# for debug
+            #print("in model save - kwargs: ", kwargs)# for debug
 
-            
             if self.nid:
-                #print("in model save - self.nid exist: ", self.nid)
+                #print("in model save - self.nid exist: ", self.nid)# for debug
                 # get prefix
                 prefix = str(self.nid)[:8]
-                #print("in model save - prefix form nid: ", prefix)
+                #print("in model save - prefix form nid: ", prefix)# for debug
+
                 # get database name
                 db_name = Databases.objects.get_data_by_prefix(prefix)
-                #print("in model save - db_name form nid: ", db_name)
+                #print("in model save - db_name form nid: ", db_name)# for debug
+
                 # save
-                #Product
-                #if not self.db_for_write:
                 if 'using' in kwargs:
                     super(ShardedModel, self).save(*args, **kwargs)
                 else:
                     super(ShardedModel, self).save(*args, **kwargs, using=str(db_name))
-                #else:
-                    #if 'using' in kwargs:
-                    #kwargs["using"] = self.db_for_write
-                    #super(ShardedModel, self).save(*args, **kwargs)
-                    #else:
-                        #super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
+
             else:
+
                 # select database name
                 db = select_write_db(model_name=self._meta.model_name)
-                #print("in model save - db: ", db)
+                #print("in model save - db: ", db) # for debug
 
                 # get prefix
                 prefix = db.get_prefix
-                #print("in model save - prefix: ", prefix)
+                #print("in model save - prefix: ", prefix) # for debug
 
                 # create nid
                 self.nid = str(prefix)+ "-" + str(uuid.uuid4())[9:]
-                #print("in model save - self.nid: ", self.nid)
+                #print("in model save - self.nid: ", self.nid) # for debug
 
                 # write to selected database 
-                #if not self.db_for_write:
-                    #if 'using' in kwargs:
+   
                 super(ShardedModel, self).save(*args, **kwargs)
-                    #else:
-                        #super(ShardedModel, self).save(*args, **kwargs, using=str(db.get_name))
-                    # update count
+
+                # update count
                 db.count = db.count + 1
                 db.save()
-                #else:
-                    #if 'using' in kwargs:
-                        #super(ShardedModel, self).save(*args, **kwargs)
-                    #else:
-                        #super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
+
+            if self.related_models is not None:
+                for related_model in self.related_models:
+                    # get related database
+                    db_list = Databases.objects.all().filter(model_name=related_model._meta.model_name).exclude(count=0)  
+                    # if exist
+                    if db_list.count() != 0:
+                        for db in db_list:
+                            #try:
+                            kwargs['using'] = str(db)
+                            super(ShardedModel, self).save(*args, **kwargs)
                 
         else:
-            #if not self.db_for_write:
-                #super(ShardedModel, self).save(*args, **kwargs) 
-            #else:
-               # if 'using' in kwargs:
             super(ShardedModel, self).save(*args, **kwargs)
-                #else:
-                    #super(ShardedModel, self).save(*args, **kwargs, using=str(self.db_for_write))
+
 
             
-
-    # save m2m solutions
-
-    #def delete(self, *args, **kwargs):
-

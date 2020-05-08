@@ -175,6 +175,33 @@ class  Store(ShardedModel):
 
 ```
 
+4. To use OneToOne field you should import it from sharding.fields
+
+```
+from django.db import models
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+from sharding.customizations import ShardedModel
+from sharding.fields import ShardedOneToOneField
+
+User = get_user_model()
+
+class Profile(ShardedModel):
+
+    owner     = ShardedOneToOneField(User, on_delete=models.CASCADE, unique=False)
+    location = models.CharField(max_length=30, blank=True)
+
+    def __str__(self):  # __unicode__ for Python 2
+        return "%s profile's" % self.owner.username
+
+@receiver(post_save, sender=User)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    if created:  
+        Profile.objects.create(owner=instance)
+
+```
 
 ### Step 3:
 1. To sharding users, you must inherit ShardedUser, it will automaticly change the id by new id base on uuid3 and uuid4, then add AUTH_USER_MODEL = 'accounts.User' to settings.py
@@ -228,15 +255,12 @@ admin.site.register(User, UserAdmin)
 
 ```
 
-That's all 
-
 
 ### TO DO:
-- Add more related Fileds (OneToOneField, ...etc.)
+- Add more related Fileds.
 - multithreading for loops
 - add mange.py command to auto insert databases names in default database and dump fixtures (python manage.py load_shard_dbs) 
-- Add on_delete = CASCADE
-- more work on ManyToManyField (add read and write databases, ... etc)
+- Add on_delete = CASCADE To ShardedForeignKeyField
 
 ### Contribute:
 - Check for open issues or open a fresh issue to start a discussion around a feature idea or a bug.

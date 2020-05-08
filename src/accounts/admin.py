@@ -16,7 +16,11 @@ admin.site.register(User, UserAdmin)
 class ProfileAdmin(admin.ModelAdmin):
     form   = ProfileAdminCreationForm
     # def save_model(self, request, obj, form, change):
+    #     print(request, obj, form, change)
+
     #     return super(ProfileAdmin, self).save_model(request, obj, form, change)
+
+
 
     #     try: 
     #         if self.nid:

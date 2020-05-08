@@ -5,6 +5,12 @@ class DatabasesManager(models.Manager):
 
     def get_data_by_prefix(self, prefix):
         return self.get_queryset().filter(prefix=prefix).distinct().first()
+    
+    def get_data_by_full_name(self, full_name):
+        full_name = full_name.split('_')
+        model_name = full_name[0]
+        number = full_name[1]
+        return self.get_queryset().filter(model_name=model_name, number= number).distinct().first()
 
 class Databases(models.Model):
     prefix     = models.CharField(max_length=8, db_index=True, unique=True, editable=False,)  
