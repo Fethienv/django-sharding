@@ -13,6 +13,14 @@ This simple package allows the developer to add more than one table to one Model
   <img width="460" height="300" src="https://camo.githubusercontent.com/3b865eebc64c4b1d31640c853ea76d25c7c894b6/68747470733a2f2f692e737461636b2e696d6775722e636f6d2f4f6e33744f2e706e67">
 </p>
 
+#### How django-sharding work?:
+- Every Model has its own database and you can use 1 database for more than one model
+- Every table has new id as premairy key (nid)
+- nid is uuid but the first 8 charter are fixed and it used as prefix
+- every prefix is specific to database key
+- every database can spilt by row count max
+- sharding django create a table for databases and register number of rows.
+
 ## Installation:
 1. clone folder sharding and add it to settings.py in INSTALED_APPS
 
