@@ -22,7 +22,7 @@ This simple package allows the developer to add more than one table to one Model
 - sharding django create a table for databases and register number of rows.
 
 ## Installation:
-1. clone folder sharding and add it to settings.py in INSTALED_APPS or run
+1. clone folder sharding from src and add it to settings.py in INSTALED_APPS or run
 
 ```
 pip install django-horizontal-sharding
