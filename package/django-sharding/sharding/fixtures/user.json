@@ -1,0 +1,23 @@
+[
+    {
+      "model": "sharding.Databases",
+      "pk": 1,
+      "fields": {
+        "prefix": "7849eaa9",
+        "model_name": "user",
+        "number":1,
+        "count":0
+      }
+    },
+    {
+      "model": "sharding.Databases",
+      "pk": 2,
+      "fields": {
+        "prefix": "7849eaa8",
+        "model_name": "profile",
+        "number":1,
+        "count":0
+      }
+    }
+    
+  ]
