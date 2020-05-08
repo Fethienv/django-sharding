@@ -20,7 +20,7 @@ class User(ShardedUser):
 
 class Profile(ShardedModel):
 
-    owner     = ShardedOneToOneField(User, on_delete=models.CASCADE, unique=False)
+    owner     = ShardedOneToOneField(User, on_delete=models.CASCADE)
     location = models.CharField(max_length=30, blank=True)
 
     def __str__(self):  # __unicode__ for Python 2
