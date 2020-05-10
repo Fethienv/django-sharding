@@ -348,7 +348,8 @@ class ShardedOneToOneField(models.OneToOneField):
                 self.model.forward_models.append(self.remote_field.model)
                 for field in self.model._meta.get_fields():
                     if field.related_model and field.model == self.model:
-                        self.model.forward_fields[self.remote_field.model._meta.model_name] = field.name
+                        self.model.forward_fields[field.related_model._meta.model_name] = field.name
+                        #self.model.forward_fields[self.remote_field.model._meta.model_name] = field.name
 
             if isinstance(self.remote_field.model, str):
                 raise ValueError("Cannot create form field for %r yet, because "
