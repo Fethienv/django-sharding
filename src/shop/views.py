@@ -40,6 +40,13 @@ class HomePageView(View):
 
         # print(Products1 & Products2 )
 
+
+        # ForeingKey tests 
+
+        Products = Product.objects.all()
+        for pp in Products:
+            print(pp.vendor)
+
         # # manyToMany tests 
         # print("----------- manyToMany tests ")
         # stores = Store.objects.filter(name="jawlatte")#.using(s)
@@ -50,10 +57,10 @@ class HomePageView(View):
 
 
         # OneToOne tests 
-        print("----------- OneToOne tests")
-        user = User.objects.get(email="testing@test.com")
-        print("user", user.nid)
-        print("user profile: ", user.profile)
+        # print("----------- OneToOne tests")
+        # user = User.objects.get(email="testing@test.com")
+        # print("user", user.nid)
+        # print("user profile: ", user.profile)
 
         # problems
         # 1. to set profile must user exist in profile db

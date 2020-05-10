@@ -16,12 +16,14 @@ from django.utils.translation import gettext_lazy as _
 from .querysetsequence import QuerySetSequence
 from .utils import db_list_for_read, select_read_db,select_write_db
 from .customizations import ShardedModel, many_to_manyManager
-from .related_descriptors import ShardReverseOneToOneDescriptor, ShardForwardOneToOneDescriptor
+from .related_descriptors import ShardReverseOneToOneDescriptor, ShardForwardOneToOneDescriptor, ShardForwardManyToOneDescriptor
 
 from .models import Databases
 
 ############################### ShardedForeignKey ################################
 class ShardedForeignKey(models.ForeignKey):
+
+    forward_related_accessor_class = ShardForwardManyToOneDescriptor
 
     def __init__(self, to, on_delete, related_name=None, related_query_name=None,
                  limit_choices_to=None, parent_link=False, to_field=None,

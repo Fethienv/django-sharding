@@ -8,6 +8,11 @@ from django.contrib.contenttypes.models import ContentType
 
 from .utils import db_list_for_read, select_read_db,select_write_db
 
+class ShardForwardManyToOneDescriptor(ForwardManyToOneDescriptor):
+    def get_queryset(self, **hints):
+        return self.field.remote_field.model.objects.db_manager(hints=hints).all()
+
+#class ShardReverseManyToOneDescriptor(ReverseManyToOneDescriptor):
 
 
 class ShardForwardOneToOneDescriptor(ForwardOneToOneDescriptor):
