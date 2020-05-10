@@ -353,7 +353,7 @@ class many_to_manyManager(models.Manager):
 
 class ShardModelQueryset(models.QuerySet):
 
-   
+   #TODO: delete if related and forward on the same database
     def delete(self):
         print("deleting ...")
         count = self.count()

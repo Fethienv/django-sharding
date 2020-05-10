@@ -102,6 +102,7 @@ class ShardedForeignKey(models.ForeignKey):
                              "its related model %r has not been loaded yet" %
                              (self.name, self.remote_field.model))
 
+        self.db_list_for_read = db_list_for_read(model_name=self.remote_field.model._meta.model_name)
         if self.db_list_for_read and self.db_list_for_read.count() != 0 and self.remote_field.model.SHAREDED_MODEL: 
                 queryset = reduce(QuerySetSequence, [self.remote_field.model._default_manager.raw_queryset().using(db.get_name) for db in self.db_list_for_read]) 
         else:
@@ -221,6 +222,7 @@ class ShardedManyToManyField(models.ManyToManyField):
         if self.remote_model not in self.model._meta.ShardedManyToManyField:
             self.model._meta.ShardedManyToManyField.append(self.remote_model) 
 
+        self.db_list_for_read = db_list_for_read(model_name=self.remote_field.model._meta.model_name)
         if self.db_list_for_read and self.db_list_for_read.count() != 0 and self.remote_model.SHAREDED_MODEL: 
                 queryset = reduce(QuerySetSequence, [self.remote_model._default_manager.raw_queryset().using(db.get_name) for db in self.db_list_for_read]) 
         else:
@@ -356,6 +358,7 @@ class ShardedOneToOneField(models.OneToOneField):
                                 "its related model %r has not been loaded yet" %
                                 (self.name, self.remote_field.model))
 
+            self.db_list_for_read = db_list_for_read(model_name=self.remote_field.model._meta.model_name)
             if self.db_list_for_read and self.db_list_for_read.count() != 0 and self.remote_field.model.SHAREDED_MODEL: 
                     queryset = reduce(QuerySetSequence, [self.remote_field.model._default_manager.raw_queryset().using(db.get_name) for db in self.db_list_for_read]) 
             else:
